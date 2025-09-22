@@ -1,0 +1,28 @@
+[project]
+name = "missions-backend"
+version = "0.1.0"
+description = "GIK Missions backend"
+authors = [
+    {name = "Your Name",email = "you@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "django-ninja (>=1.4.3,<2.0.0)",
+    "isort (>=6.0.1,<7.0.0)",
+    "black (>=25.9.0,<26.0.0)",
+    "mypy (>=1.18.2,<2.0.0)",
+    "django-ninja-jwt (>=5.3.7,<6.0.0)",
+    "django-filter (>=25.1,<26.0)",
+    "pydantic (>=2.11.9,<3.0.0)",
+    "pillow (>=11.3.0,<12.0.0)",
+    "django (>=5.2.6,<6.0.0)",
+    "python-decouple (>=3.8,<4.0)",
+    "django-cors-headers (>=4.9.0,<5.0.0)",
+    "psycopg2-binary (>=2.9.10,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

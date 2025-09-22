@@ -1,0 +1,228 @@
+# GIK Missions Backend
+
+GIK missions related backend functionalities and apis.
+
+## Prerequisites
+
+- Docker and Docker Compose
+- Git
+
+## Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone git@github.com:godinkenyadev-ops/missions_backend.git
+   cd missions_backend
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` and configure your database settings:
+   ```env
+   DATABASE_NAME=missions_db
+   DATABASE_USER=missions_user
+   DATABASE_PASSWORD=your_secure_password
+   DATABASE_HOST=missions_postgres
+   DATABASE_PORT=5432
+   DJANGO_SUPERUSER_USERNAME=admin
+   DJANGO_SUPERUSER_EMAIL=admin@gmail.com
+   DJANGO_SUPERUSER_PASSWORD=testpassword
+   ```
+
+3. **Build and run the application**
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Access the application**
+   - API: http://127.0.0.1:9050
+   - Admin panel: http://127.0.0.1:9050/admin
+   - admin credentials: (`api/superuser_setup.py`) uses env vars mentioned above to create superuser automatically
+
+## Project Structure
+This will change over time, but here is the current structure:
+```
+missions_backend/
+├── api/                          # Django application
+│   ├── manage.py                # Django management script
+│   ├── project/                 # Django project settings
+│   │   ├── settings.py         # Main settings
+│   │   ├── urls.py             # URL configuration
+│   │   └── wsgi.py             # WSGI configuration
+│   └── superuser_setup.py       # Automatic superuser creation
+├── docker-compose.yaml          # Docker Compose configuration
+├── Dockerfile                   # Docker image definition
+├── pyproject.toml              # Poetry dependencies
+├── poetry.lock                 # Poetry lock file
+└── .env.example                # Environment variables template
+```
+
+## Services
+
+### Backend (Django)
+- **Container**: `missions_backend`
+- **Port**: 9050 (maps to container port 8000)
+- **Features**:
+  - Automatic database migrations
+  - Automatic superuser creation
+  - Hot reload for development
+
+### Database (PostgreSQL)
+- **Container**: `missions_postgres`
+- **Port**: 5435 (maps to container port 5432)
+- **Data persistence**: Volume `postgres_data`
+
+## Development Commands
+
+### Start services
+```bash
+docker compose up
+```
+
+### Build and start (after code changes)
+```bash
+docker compose up --build
+```
+
+### Run in background
+```bash
+docker compose up -d
+```
+
+### View logs
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f backend
+docker compose logs -f db
+```
+
+### Execute commands in containers
+```bash
+# Django management commands
+docker compose exec backend poetry run python api/manage.py <command>
+
+# Shell access
+docker compose exec backend bash
+docker compose exec db psql -U ${DATABASE_USER} -d ${DATABASE_NAME}
+```
+
+### Stop services
+```bash
+docker compose down
+```
+
+### Complete cleanup (removes containers, networks, volumes, and images)
+```bash
+docker compose down --rmi all --volumes --remove-orphans
+```
+
+## Common Django Commands
+
+```bash
+# Create migrations
+docker compose exec backend poetry run python api/manage.py makemigrations
+
+# Apply migrations(if needed manually)
+docker compose exec backend poetry run python api/manage.py migrate
+
+# Create superuser (if needed manually)
+docker compose exec backend poetry run python api/manage.py createsuperuser
+
+# Django shell
+docker compose exec backend poetry run python api/manage.py shell
+
+# Collect static files (for production)
+docker compose exec backend poetry run python api/manage.py collectstatic
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_NAME` | PostgreSQL database name | - |
+| `DATABASE_USER` | PostgreSQL username | - |
+| `DATABASE_PASSWORD` | PostgreSQL password | - |
+| `DATABASE_HOST` | PostgreSQL host | `missions_postgres` |
+| `DATABASE_PORT` | PostgreSQL port | `5432` |
+| `DJANGO_SUPERUSER_USERNAME` | Django admin username | - |
+| `DJANGO_SUPERUSER_EMAIL` | Django admin email | - |
+| `DJANGO_SUPERUSER_PASSWORD` | Django admin password | - |
+| `DJANGO_SECRET_KEY` | Django secret key | `change_me` |
+| `ALLOWED_HOSTS` | Comma-separated list of allowed hosts | `*` |
+| `DEBUG` | Enable/disable debug mode | `1` (enabled) |
+
+## Troubleshooting
+
+### Port already in use
+If port 9050 is busy, change it in `docker-compose.yaml`:
+```yaml
+ports:
+  - "9051:8000"  # Use different port
+```
+
+### Database connection issues
+1. Ensure PostgreSQL container is healthy:
+   ```bash
+   docker compose ps
+   ```
+2. Check database logs:
+   ```bash
+   docker compose logs db
+   ```
+
+### Container won't start
+1. Check logs for errors:
+   ```bash
+   docker compose logs backend
+   ```
+2. Rebuild containers:
+   ```bash
+   docker compose up --build --force-recreate
+   ```
+
+### Permission issues
+Ensure your user is in the docker group:
+```bash
+sudo usermod -aG docker $USER
+# Log out and log back in
+```
+
+### Complete reset
+If you need to start fresh:
+```bash
+docker compose down --rmi all --volumes --remove-orphans
+docker compose up --build
+```
+
+## Production Considerations
+
+For production deployment:
+
+1. **Environment variables**: Use secure values and environment-specific settings
+2. **Database**: Consider managed PostgreSQL service
+3. **Static files**: Configure proper static file serving
+4. **Security**: Update `ALLOWED_HOSTS` and `SECRET_KEY`
+5. **Server**: Replace development server with Gunicorn/uWSGI
+6. **Reverse proxy**: Add Nginx for static files and load balancing
+7. **Volumes**: Use named volumes or bind mounts for data persistence
+
+## Contributing
+
+1. Make your changes on a new branch based on `main`
+2. Test locally with `docker compose up --build`
+3. Ensure all containers start successfully
+4. Submit a pull request
+
+## Support
+
+If you encounter issues:
+1. Check the logs: `docker compose logs -f`
+2. Verify environment variables in `.env`
+3. Ensure Docker and Docker Compose are installed correctly
+4. Check port availability: `ss -tlnp | grep 9050`
