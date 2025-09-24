@@ -404,6 +404,25 @@ pyjwt = [
 crypto = ["cryptography (>=3.3.1)"]
 
 [[package]]
+name = "django-phonenumber-field"
+version = "8.1.0"
+description = "An international phone number field for django models."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "django_phonenumber_field-8.1.0-py3-none-any.whl", hash = "sha256:9ba66873bf47401b13fc57797fbf85e785864a6bfdc8b9daa3a9012886567045"},
+    {file = "django_phonenumber_field-8.1.0.tar.gz", hash = "sha256:f19450625574ad3a2de047c409527d0e57699496849e71e53b53e8679ff67b27"},
+]
+
+[package.dependencies]
+Django = ">=4.2"
+
+[package.extras]
+phonenumbers = ["phonenumbers (>=7.0.2)"]
+phonenumberslite = ["phonenumberslite (>=7.0.2)"]
+
+[[package]]
 name = "injector"
 version = "0.22.0"
 description = "Injector - Python dependency injection framework, inspired by Guice"
@@ -1004,4 +1023,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "69b40f94e6b401e92f1bdbca655145c50a35c3b85227e506a35b3216c3ca2be8"
+content-hash = "55c69a13ba477c6e0f85f95407a09e73242c98f2250c33dc92c5da636f154993"
