@@ -6,5 +6,5 @@ router = Router(
 
 
 @router.get("/")
-def list_users(request):
-    return {"message": "List of users"}
+def test_api(request):
+    return {"message": "Endpoint is working"}

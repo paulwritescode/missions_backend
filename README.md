@@ -48,6 +48,19 @@ This will change over time, but here is the current structure:
 ```
 missions_backend
     ├── api
+    │   ├── authentication
+    │   │   ├── api.py
+    │   │   ├── backends
+    │   │   │   ├── apple.py
+    │   │   │   ├── base.py
+    │   │   │   ├── google.py
+    │   │   │   ├── __init__.py
+    │   │   │   ├── jwt.py
+    │   │   │   └── registry.py
+    │   │   ├── __init__.py
+    │   │   ├── middleware.py
+    │   │   ├── schemas.py
+    │   │   └── utils.py
     │   ├── base
     │   │   ├── api.py
     │   │   ├── apps.py
@@ -82,6 +95,7 @@ missions_backend
     │       └── tests.py
     ├── docker-compose.yaml
     ├── Dockerfile
+    ├── .env
     ├── .env.example
     ├── .gitignore
     ├── poetry.lock
