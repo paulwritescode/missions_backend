@@ -1,0 +1,188 @@
+"""
+Authentication API endpoints using Django Ninja.
+"""
+from django.contrib.auth import authenticate
+from django.http import HttpRequest
+from ninja import Router
+from ninja.errors import HttpError
+
+from authentication.backends import get_backend
+from authentication.schemas import (
+    AuthProviderListResponse,
+    AuthResponse,
+    LoginRequest,
+    SocialAuthRequest,
+    SocialAuthResponse,
+    TokenVerificationResponse
+)
+from authentication.utils import get_auth_for_user, authenticate_social_user
+from users.models import AuthProvider, User
+
+router = Router(tags=["auth"])
+
+
+@router.post("/login", response=AuthResponse)
+def login(request, data: LoginRequest):
+    """
+    Traditional email/password login endpoint.
+
+    Authenticates a user with email and password, returning tokens on success.
+    """
+    email = data.email
+    password = data.password
+
+    # Authenticate using Django's built-in system
+    user = authenticate(email=email, password=password)
+
+    if not user:
+        raise HttpError(401, "Invalid email or password")
+
+    if not user.is_active:
+        raise HttpError(403, "User account is disabled")
+
+    # Generate authentication data
+    auth_data = get_auth_for_user(user)
+    return auth_data
+
+
+@router.post("/social", response=SocialAuthResponse)
+def social_auth(request, data: SocialAuthRequest):
+    """
+    Social authentication endpoint.
+
+    Authenticates with a social provider (Google or Apple).
+    Accepts either a token or authorization code.
+    """
+    provider_name = data.provider
+    token = data.token
+    code = data.code
+    user_data = data.user  # For Apple's initial auth with name data
+
+    if not provider_name or (not token and not code):
+        raise HttpError(400, "Provider name and token/code are required")
+
+    # Get the appropriate backend
+    backend = get_backend(provider_name)
+    if not backend:
+        raise HttpError(400, f"Provider {provider_name} not supported")
+
+    # Authenticate with the provider
+    auth_kwargs = {'user': user_data} if user_data else {}
+    if token:
+        auth_kwargs['access_token' if provider_name == 'google' else 'id_token'] = token
+    elif code:
+        auth_kwargs['code'] = code
+
+    success, user_info, error = backend.authenticate(request, **auth_kwargs)
+
+    if not success:
+        raise HttpError(401, error or "Authentication failed")
+
+    provider_user_id = user_info.get('provider_user_id')
+    email = user_info.get('email')
+    provider_data = user_info.get('provider_data', {})
+
+    if not provider_user_id or not email:
+        raise HttpError(400, "Provider did not return required user information")
+
+    # Get or create user
+    user, created = authenticate_social_user(
+        provider_name,
+        provider_user_id,
+        email,
+        provider_data
+    )
+
+    # Generate authentication data
+    auth_data = get_auth_for_user(user)
+    response_data = {**auth_data, "is_new_user": created}
+
+    return response_data
+
+
+@router.post("/refresh", response=AuthResponse)
+def refresh_token(request):
+    """
+    Token refresh endpoint.
+
+    Expects an authenticated user via JWT token in Authorization header.
+    Returns a new token with refreshed expiration.
+    """
+    user = request.user
+
+    if not user or not user.is_authenticated:
+        raise HttpError(401, "Invalid or expired token")
+
+    # Generate new authentication data
+    auth_data = get_auth_for_user(user)
+    return auth_data
+
+
+@router.get("/verify", response=TokenVerificationResponse)
+def verify_token(request):
+    """
+    Token verification endpoint.
+
+    Verifies the token in the Authorization header and returns user info if valid.
+    """
+    user = request.user
+
+    if not user or not user.is_authenticated:
+        return {"valid": False}
+
+    return {
+        "valid": True,
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "display_name": user.get_display_name(),
+            "is_superuser": user.is_superuser,
+            "is_staff": user.is_staff,
+            "auth_provider": getattr(
+                user.get_primary_auth_provider(),
+                'provider.name',
+                'local'
+            ) if hasattr(user, 'get_primary_auth_provider') else 'local',
+            "roles": list(user.roles.values_list('name', flat=True)) if hasattr(user, 'roles') else []
+        }
+    }
+
+
+@router.get("/providers", response=AuthProviderListResponse)
+def auth_providers(request):
+    """
+    Get information about available authentication providers.
+    """
+    providers_data = []
+    for provider in AuthProvider.objects.filter(is_active=True):
+        auth_backend = get_backend(provider.name)
+        auth_url = None
+
+        if auth_backend:
+            try:
+                auth_url = auth_backend.get_auth_url()
+            except NotImplementedError:
+                pass
+
+        providers_data.append({
+            "name": provider.name,
+            "display_name": provider.display_name,
+            "supports_registration": provider.allow_registration,
+            "auth_url": auth_url,
+            "priority": provider.priority
+        })
+
+    return {"providers": providers_data}
+
+
+# Custom authentication for Django Ninja
+def get_user(request: HttpRequest) -> User:
+    """
+    Authentication function for Django Ninja.
+
+    This can be used with NinjaAPI's authentication parameter.
+    """
+    user = request.user
+    if user and user.is_authenticated:
+        return user
+    return None

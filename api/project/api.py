@@ -5,11 +5,13 @@ from ninja import NinjaAPI
 from pydantic import ValidationError
 
 from users.api import router as users_router
+from authentication.api import router as auth_router, get_user
 
-api = NinjaAPI()
+api = NinjaAPI(auth=get_user)
 
 
 api.add_router("/users/", users_router)
+api.add_router("/auth/", auth_router)
 
 
 @api.exception_handler(ValidationError)

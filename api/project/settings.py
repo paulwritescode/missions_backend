@@ -162,3 +162,9 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Authentication backends configuration
+GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID", default=None)
+GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET", default=None)
+GOOGLE_REDIRECT_URI = config("GOOGLE_REDIRECT_URI", default="/api/auth/google/callback")

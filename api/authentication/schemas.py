@@ -1,0 +1,75 @@
+"""
+Authentication schemas for Django Ninja API.
+"""
+from typing import Dict, List, Optional, Any
+
+from ninja import Schema
+from pydantic import EmailStr, Field
+
+
+class LoginRequest(Schema):
+    """Schema for login requests."""
+    email: EmailStr
+    password: str
+
+
+class SocialAuthRequest(Schema):
+    """Schema for social authentication requests."""
+    provider: str
+    token: Optional[str] = None
+    code: Optional[str] = None
+    user: Optional[Dict[str, Any]] = None  # For Apple's initial auth with name data
+
+
+class TokenData(Schema):
+    """Schema for authentication tokens."""
+    access_token: str
+    token_type: str
+    expires_in: int
+
+
+class UserData(Schema):
+    """Schema for user data returned in auth responses."""
+    id: str
+    email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    display_name: str
+    auth_provider: str
+    roles: List[str] = []
+    is_superuser: bool = False
+    is_staff: bool = False
+    profile_photo: Optional[str] = None
+
+
+class AuthResponse(Schema):
+    """Schema for successful authentication responses."""
+    access_token: str
+    token_type: str
+    expires_in: int
+    user: UserData
+
+
+class SocialAuthResponse(AuthResponse):
+    """Schema for successful social authentication responses."""
+    is_new_user: bool = False
+
+
+class TokenVerificationResponse(Schema):
+    """Schema for token verification responses."""
+    valid: bool
+    user: Optional[UserData] = None
+
+
+class AuthProviderInfo(Schema):
+    """Schema for auth provider information."""
+    name: str
+    display_name: str
+    supports_registration: bool
+    auth_url: Optional[str] = None
+    priority: int
+
+
+class AuthProviderListResponse(Schema):
+    """Schema for listing available authentication providers."""
+    providers: List[AuthProviderInfo]
