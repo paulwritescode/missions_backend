@@ -9,7 +9,8 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import datetime
+import os
 from pathlib import Path
 
 from decouple import config, Csv
@@ -25,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("DJANGO_SECRET_KEY")
 
 DEBUG = config("DEBUG", True, cast=bool)
-
+ALLOW_ADMIN_SITE = config("ALLOW_ADMIN_SITE", True, cast=bool)
 
 # Application definition
 
@@ -95,6 +96,9 @@ else:
     )
     ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
 
+CORS_EXPOSE_HEADERS = ("link",)
+CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", ["https://*.127.0.0.1"])
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -113,6 +117,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+NINJA_JWT = {
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(minutes=10),
+    "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": False,
+    "ALGORITHM": "HS512",
+    "SIGNING_KEY": config("DJANGO_SECRET"),
+    "AUTH_TOKEN_CLASSES": ("ninja_jwt.tokens.AccessToken",),
+    "USER_AUTHENTICATION_RULE": "ninja_jwt.authentication.default_user_authentication_rule",
+    "TOKEN_BLACKLIST_INPUT_SCHEMA": "ninja_jwt.schema.TokenBlacklistInputSchema",
+    "TOKEN_VERIFY_INPUT_SCHEMA": "ninja_jwt.schema.TokenVerifyInputSchema",
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -129,7 +146,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = Path(BASE_DIR, "static")
+
+MEDIA_ROOT = Path(BASE_DIR, "media")
+MEDIA_URL = "/media/"
+MEDIA_DIRS = (os.path.join(BASE_DIR, "media"),)
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
