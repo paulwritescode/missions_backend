@@ -39,25 +39,54 @@ GIK missions related backend functionalities and apis.
 
 4. **Access the application**
    - API: http://127.0.0.1:9050
+   - Documentation: http://127.0.0.1:9050/api/docs
    - Admin panel: http://127.0.0.1:9050/admin
    - admin credentials: (`api/superuser_setup.py`) uses env vars mentioned above to create superuser automatically
 
 ## Project Structure
 This will change over time, but here is the current structure:
 ```
-missions_backend/
-├── api/                          # Django application
-│   ├── manage.py                # Django management script
-│   ├── project/                 # Django project settings
-│   │   ├── settings.py         # Main settings
-│   │   ├── urls.py             # URL configuration
-│   │   └── wsgi.py             # WSGI configuration
-│   └── superuser_setup.py       # Automatic superuser creation
-├── docker-compose.yaml          # Docker Compose configuration
-├── Dockerfile                   # Docker image definition
-├── pyproject.toml              # Poetry dependencies
-├── poetry.lock                 # Poetry lock file
-└── .env.example                # Environment variables template
+missions_backend
+    ├── api
+    │   ├── base
+    │   │   ├── api.py
+    │   │   ├── apps.py
+    │   │   ├── filters.py
+    │   │   ├── __init__.py
+    │   │   ├── models.py
+    │   │   ├── schemas.py
+    │   │   └── utils
+    │   │       ├── exceptions.py
+    │   │       ├── helpers.py
+    │   │       └── __init__.py
+    │   ├── manage.py
+    │   ├── project
+    │   │   ├── api.py
+    │   │   ├── asgi.py
+    │   │   ├── __init__.py
+    │   │   ├── settings.py
+    │   │   ├── urls.py
+    │   │   └── wsgi.py
+    │   ├── superuser_setup.py
+    │   └── users
+    │       ├── admin.py
+    │       ├── api.py
+    │       ├── apps.py
+    │       ├── constants.py
+    │       ├── __init__.py
+    │       ├── managers.py
+    │       ├── migrations
+    │       │   ├── 0001_initial.py
+    │       │   └── __init__.py
+    │       ├── models.py
+    │       └── tests.py
+    ├── docker-compose.yaml
+    ├── Dockerfile
+    ├── .env.example
+    ├── .gitignore
+    ├── poetry.lock
+    ├── pyproject.toml
+    └── README.md
 ```
 
 ## Services

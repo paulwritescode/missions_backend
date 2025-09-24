@@ -15,7 +15,7 @@ EMAIL = config("DJANGO_SUPERUSER_EMAIL")
 PASSWORD = config("DJANGO_SUPERUSER_PASSWORD")
 
 if not User.objects.filter(username=USERNAME).exists():
-    User.objects.create_superuser(USERNAME, EMAIL, PASSWORD)
+    User.objects.create_superuser(email=EMAIL, password=PASSWORD, first_name=USERNAME)
     print("✅ Superuser '{}' created.".format(USERNAME))
 else:
     print("ℹ️ Superuser '{}' already exists. Skipping.".format(USERNAME))

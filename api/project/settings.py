@@ -124,7 +124,7 @@ NINJA_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS512",
-    "SIGNING_KEY": config("DJANGO_SECRET"),
+    "SIGNING_KEY": config("DJANGO_SECRET_KEY"),
     "AUTH_TOKEN_CLASSES": ("ninja_jwt.tokens.AccessToken",),
     "USER_AUTHENTICATION_RULE": "ninja_jwt.authentication.default_user_authentication_rule",
     "TOKEN_BLACKLIST_INPUT_SCHEMA": "ninja_jwt.schema.TokenBlacklistInputSchema",
@@ -142,6 +142,8 @@ USE_I18N = True
 
 USE_TZ = True
 
+AUTH_USER_MODEL = "users.User"
+ADMIN_URL = config("ADMIN_URL", "admin/")
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/

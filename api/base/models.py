@@ -2,7 +2,6 @@ import ast
 from typing import Any, Dict
 
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.gis.db.models import PointField
 from django.db import models
 from django.http import HttpRequest
 from phonenumber_field.modelfields import PhoneNumberField
@@ -45,10 +44,6 @@ class ToDictMixin:
                     data[field.name] = request.build_absolute_uri(file.url) if request else file.url
                 else:
                     data[field.name] = None
-
-            elif isinstance(field, PointField):
-                if data[field.name]:
-                    data[field.name] = ast.literal_eval(data[field.name].json)
 
             elif isinstance(field, PhoneNumberField):
                 data[field.name] = str(data[field.name])

@@ -4,12 +4,12 @@ from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 from pydantic import ValidationError
 
-# from users.api import router as users_router
+from users.api import router as users_router
 
 api = NinjaAPI()
 
 
-# api.add_router("/users/", users_router)
+api.add_router("/users/", users_router)
 
 
 @api.exception_handler(ValidationError)

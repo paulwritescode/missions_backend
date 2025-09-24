@@ -31,7 +31,7 @@ from django.urls import path
 from .api import api
 
 if settings.ALLOW_ADMIN_SITE:
-    urlpatterns = [path("admin/", admin.site.urls)]
+    urlpatterns = [path(settings.ADMIN_URL, admin.site.urls)]
 
 urlpatterns += [
     path("api/", api.urls),

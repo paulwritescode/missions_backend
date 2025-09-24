@@ -1,3 +1,10 @@
-from django.shortcuts import render
+from ninja import Router
 
-# Create your views here.
+router = Router(
+    tags=["users"],
+)
+
+
+@router.get("/")
+def list_users(request):
+    return {"message": "List of users"}
