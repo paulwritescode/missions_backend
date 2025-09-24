@@ -1,0 +1,27 @@
+import re
+from typing import Any, Dict, List, Union
+
+from django.db.utils import IntegrityError
+from ninja.errors import ValidationError
+
+
+class CustomValidationError(ValidationError):
+    def __init__(self, errors: Union[str, List[Dict[str, Any]]]) -> None:
+        self.errors = errors  # type: ignore
+        super().__init__(errors)  # type: ignore
+
+
+def parse_integrity_error(error: IntegrityError) -> str:
+    message = str(error)
+
+    # Check for unique constraint violation
+    if "duplicate key value violates unique constraint" in message:
+        match = re.search(r"Key \((\w+)\)=\((.*?)\) already exists", message)
+        if match:
+            field, value = match.groups()
+            return "The value '{}' is already used for '{}'. Please use a different one.".format(value, field)
+        else:
+            return "A unique constraint was violated. Please check your input values."
+
+    # Add more patterns here if needed
+    return "A database error occurred. Please try again or contact support."
