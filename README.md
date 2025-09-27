@@ -188,20 +188,29 @@ docker compose exec backend poetry run python api/manage.py collectstatic
 ```
 
 ## Environment Variables
+| Variable                    | Description                                  | Default / Example                             |
+| --------------------------- | -------------------------------------------- | --------------------------------------------- |
+| `DATABASE_NAME`             | PostgreSQL database name                     | `missions_db`                                 |
+| `DATABASE_USER`             | PostgreSQL username                          | `postgres`                                    |
+| `DATABASE_PASSWORD`         | PostgreSQL password                          | `postgres`                                    |
+| `DATABASE_HOST`             | PostgreSQL host                              | `db`                                          |
+| `DATABASE_PORT`             | PostgreSQL port                              | `5432`                                        |
+| `DJANGO_SUPERUSER_USERNAME` | Django admin username                        | `admin`                                       |
+| `DJANGO_SUPERUSER_EMAIL`    | Django admin email                           | `admin@gmail.com`                             |
+| `DJANGO_SUPERUSER_PASSWORD` | Django admin password                        | `adminpassword`                               |
+| `DJANGO_SECRET_KEY`         | Django secret key                            | `your-secret-key-here`                        |
+| `ALLOWED_HOSTS`             | Comma-separated list of allowed hosts        | `*`                                           |
+| `DEBUG`                     | Enable/disable debug mode                    | `True`                                        |
+| `CORS_ALLOWED_ORIGINS`      | Comma-separated list of allowed CORS origins | `http://localhost:3000,http://127.0.0.1:3000` |
+| `GOOGLE_CLIENT_ID`          | Google OAuth client ID                       | -                                             |
+| `GOOGLE_CLIENT_SECRET`      | Google OAuth client secret                   | -                                             |
+| `GOOGLE_REDIRECT_URI`       | Google OAuth redirect URI                    | -                                             |
+| `APPLE_CLIENT_ID`           | Apple OAuth client ID                        | -                                             |
+| `APPLE_TEAM_ID`             | Apple developer team ID                      | -                                             |
+| `APPLE_KEY_ID`              | Apple private key ID                         | -                                             |
+| `APPLE_PRIVATE_KEY`         | Apple private key content                    | -                                             |
+| `APPLE_REDIRECT_URI`        | Apple OAuth redirect URI                     | -                                             |
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_NAME` | PostgreSQL database name | - |
-| `DATABASE_USER` | PostgreSQL username | - |
-| `DATABASE_PASSWORD` | PostgreSQL password | - |
-| `DATABASE_HOST` | PostgreSQL host | `missions_postgres` |
-| `DATABASE_PORT` | PostgreSQL port | `5432` |
-| `DJANGO_SUPERUSER_USERNAME` | Django admin username | - |
-| `DJANGO_SUPERUSER_EMAIL` | Django admin email | - |
-| `DJANGO_SUPERUSER_PASSWORD` | Django admin password | - |
-| `DJANGO_SECRET_KEY` | Django secret key | `change_me` |
-| `ALLOWED_HOSTS` | Comma-separated list of allowed hosts | `*` |
-| `DEBUG` | Enable/disable debug mode | `1` (enabled) |
 
 ## Troubleshooting
 
