@@ -113,23 +113,19 @@ def refresh_token(request, data: TokenRefreshIn):
     if not jwt_backend:
         raise HttpError(500, "JWT backend not available")
 
-    # ✅ Verify and decode the incoming access token
     try:
         payload = jwt_backend.decode_token(data.access_token)
     except Exception:
         raise HttpError(401, "Invalid or expired token")
 
-    # ✅ Extract user_id from the payload
     user_id = payload.get("user_id") or payload.get("id")
     if not user_id:
         raise HttpError(401, "Invalid token payload")
 
-    # ✅ Fetch user
     user = User.objects.filter(id=user_id).first()
     if not user:
         raise HttpError(401, "User not found or token invalid")
 
-    # ✅ Generate a new token
     auth_data = get_auth_for_user(user)
     return auth_data
 

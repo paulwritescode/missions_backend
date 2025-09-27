@@ -57,8 +57,10 @@ missions_backend
     │   │   │   ├── __init__.py
     │   │   │   ├── jwt.py
     │   │   │   └── registry.py
+    │   │   ├── constants.py
     │   │   ├── __init__.py
     │   │   ├── middleware.py
+    │   │   ├── permissions.py
     │   │   ├── schemas.py
     │   │   └── utils.py
     │   ├── base
@@ -101,6 +103,7 @@ missions_backend
     ├── poetry.lock
     ├── pyproject.toml
     └── README.md
+
 ```
 
 ## Services
