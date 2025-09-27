@@ -16,9 +16,9 @@ class LoginRequest(Schema):
 class SocialAuthRequest(Schema):
     """Schema for social authentication requests."""
     provider: str
-    token: Optional[str] = None
+    # token: Optional[str] = None
     code: Optional[str] = None
-    user: Optional[Dict[str, Any]] = None  # For Apple's initial auth with name data
+    # user: Optional[Dict[str, Any]] = None  # For Apple's initial auth with name data
 
 
 class TokenData(Schema):
@@ -73,3 +73,8 @@ class AuthProviderInfo(Schema):
 class AuthProviderListResponse(Schema):
     """Schema for listing available authentication providers."""
     providers: List[AuthProviderInfo]
+
+
+class TokenRefreshIn(Schema):
+    """Schema for token refresh requests."""
+    access_token: str = Field(..., description="The refresh token to obtain a new access token.")

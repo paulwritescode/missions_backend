@@ -2,6 +2,7 @@
 Base authentication backend classes and interfaces.
 """
 from abc import ABC, abstractmethod
+from pprint import pprint
 from typing import Any, Dict, Optional, Tuple
 
 from django.http import HttpRequest
@@ -36,7 +37,6 @@ class AuthBackend(ABC):
             config: A dictionary of configuration parameters for this backend.
         """
         self.config = config or {}
-        self.validate_config()
 
     def validate_config(self) -> None:
         """
@@ -104,3 +104,6 @@ class AuthBackend(ABC):
 
     def __str__(self) -> str:
         return self.display_name or self.name
+
+    def decode_token(self, access_token):
+        pass

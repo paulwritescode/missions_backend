@@ -1,14 +1,18 @@
 """
-Google OAuth authentication backend implementation.
+Updated Google OAuth authentication backend implementation.
 """
+from pprint import pprint
 from typing import Dict, Optional, Tuple
 
 import requests
 from django.conf import settings
 from django.http import HttpRequest
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 
 from authentication.backends.base import AuthBackend
 from authentication.backends.registry import register_backend
+from authentication.constants import AuthBackendType
 
 
 @register_backend
@@ -17,9 +21,10 @@ class GoogleAuthBackend(AuthBackend):
     Google OAuth authentication backend.
 
     This backend handles authentication with Google's OAuth 2.0 service.
+    Supports both web OAuth flow (with authorization codes) and mobile ID token verification.
     """
-    name = 'google'
-    display_name = 'Google'
+    name = AuthBackendType.GOOGLE.value
+    display_name = AuthBackendType.GOOGLE.label
     supports_registration = True
     requires_config = True
 
@@ -34,15 +39,16 @@ class GoogleAuthBackend(AuthBackend):
         self.client_id = self.config.get('client_id', getattr(settings, 'GOOGLE_CLIENT_ID', None))
         self.client_secret = self.config.get('client_secret', getattr(settings, 'GOOGLE_CLIENT_SECRET', None))
         self.redirect_uri = self.config.get('redirect_uri', getattr(settings, 'GOOGLE_REDIRECT_URI', None))
-
         # Optional config
         self.scope = self.config.get('scope', 'email profile openid')
+        self.validate_config()
 
     def validate_config(self) -> None:
         """Ensure required configuration is present."""
         super().validate_config()
-        if not all([self.client_id, self.client_secret, self.redirect_uri]):
-            raise ValueError("Google OAuth backend requires client_id, client_secret, and redirect_uri")
+        if not self.client_id:
+            raise ValueError("Google OAuth backend requires client_id")
+        # client_secret and redirect_uri only needed for web OAuth flow
 
     def get_auth_url(self) -> str:
         """
@@ -51,6 +57,9 @@ class GoogleAuthBackend(AuthBackend):
         Returns:
             The URL to redirect the user to for Google authentication.
         """
+        if not all([self.client_id, self.client_secret, self.redirect_uri]):
+            raise ValueError("Web OAuth flow requires client_id, client_secret, and redirect_uri")
+
         params = {
             'client_id': self.client_id,
             'redirect_uri': self.redirect_uri,
@@ -67,34 +76,86 @@ class GoogleAuthBackend(AuthBackend):
         """
         Authenticate a user with Google.
 
-        This method expects an authorization code or access token.
-        If code is provided, it will exchange it for an access token.
+        This method supports multiple authentication flows:
+        1. ID token verification (for mobile apps)
+        2. Access token validation (for web apps with existing tokens)
+        3. Authorization code exchange (for web OAuth flow)
 
         Args:
             request: The HTTP request
-            **kwargs: May contain 'code' (auth code) or 'access_token'
+            **kwargs: May contain 'code', 'access_token', or 'id_token'
 
         Returns:
             Tuple of (success, user_data, error_message)
         """
         code = kwargs.get('code')
         access_token = kwargs.get('access_token') or self.extract_auth_token(request)
+        id_token_str = kwargs.get('id_token')
 
-        # No credentials provided
-        if not code and not access_token:
-            return False, {}, "No authorization code or access token provided"
+        # Priority: ID token (mobile) > Access token > Code (web)
+        if id_token_str:
+            return self._authenticate_with_id_token(id_token_str)
+        elif access_token:
+            return self._authenticate_with_access_token(access_token)
+        elif code:
+            return self._authenticate_with_code(code)
+        else:
+            return False, {}, "No authentication credentials provided"
 
-        # If we have a code but no token, exchange code for token
-        if code and not access_token:
-            token_response = self._exchange_code_for_token(code)
-            if 'error' in token_response:
-                return False, {}, f"Failed to exchange code: {token_response.get('error_description', token_response.get('error'))}"
+    def _authenticate_with_id_token(self, id_token_str: str) -> Tuple[bool, Dict, Optional[str]]:
+        """
+        Authenticate using Google ID token (preferred for mobile apps).
 
-            access_token = token_response.get('access_token')
-            if not access_token:
-                return False, {}, "No access token in response"
+        Args:
+            id_token_str: The ID token from Google Sign-In
 
-        # Use token to get user info
+        Returns:
+            Tuple of (success, user_data, error_message)
+        """
+        try:
+            # Verify the ID token with Google
+            idinfo = id_token.verify_oauth2_token(
+                id_token_str,
+                google_requests.Request(),
+                self.client_id
+            )
+
+            # Extract user data from the verified token
+            user_data = {
+                'provider_user_id': idinfo.get('sub'),
+                'email': idinfo.get('email'),
+                'provider_data': {
+                    'name': idinfo.get('name'),
+                    'given_name': idinfo.get('given_name'),
+                    'family_name': idinfo.get('family_name'),
+                    'picture': idinfo.get('picture'),
+                    'email_verified': idinfo.get('email_verified', False),
+                    'locale': idinfo.get('locale'),
+                    'aud': idinfo.get('aud'),  # Client ID
+                    'iss': idinfo.get('iss'),  # Issuer
+                }
+            }
+
+            if not user_data['provider_user_id'] or not user_data['email']:
+                return False, {}, "ID token missing required user data"
+
+            return True, user_data, None
+
+        except ValueError as e:
+            return False, {}, f"Invalid ID token: {str(e)}"
+        except Exception as e:
+            return False, {}, f"ID token verification failed: {str(e)}"
+
+    def _authenticate_with_access_token(self, access_token: str) -> Tuple[bool, Dict, Optional[str]]:
+        """
+        Authenticate using Google access token.
+
+        Args:
+            access_token: The access token from Google OAuth
+
+        Returns:
+            Tuple of (success, user_data, error_message)
+        """
         user_info = self._get_user_info(access_token)
         if 'error' in user_info:
             return False, {}, f"Failed to get user info: {user_info.get('error_description', user_info.get('error'))}"
@@ -118,6 +179,31 @@ class GoogleAuthBackend(AuthBackend):
 
         return True, user_data, None
 
+    def _authenticate_with_code(self, code: str) -> Tuple[bool, Dict, Optional[str]]:
+        """
+        Authenticate using authorization code (web OAuth flow).
+
+        Args:
+            code: The authorization code from Google OAuth
+
+        Returns:
+            Tuple of (success, user_data, error_message)
+        """
+        if not all([self.client_secret, self.redirect_uri]):
+            return False, {}, "Authorization code flow requires client_secret and redirect_uri"
+
+        # Exchange code for access token
+        token_response = self._exchange_code_for_token(code)
+        if 'error' in token_response:
+            return False, {}, f"Failed to exchange code: {token_response.get('error_description', token_response.get('error'))}"
+
+        access_token = token_response.get('access_token')
+        if not access_token:
+            return False, {}, "No access token in response"
+
+        # Use access token to authenticate
+        return self._authenticate_with_access_token(access_token)
+
     def _exchange_code_for_token(self, code: str) -> Dict:
         """
         Exchange an authorization code for an access token.
@@ -135,9 +221,9 @@ class GoogleAuthBackend(AuthBackend):
             'redirect_uri': self.redirect_uri,
             'grant_type': 'authorization_code'
         }
-
         try:
             response = requests.post(self.TOKEN_URL, data=payload)
+            pprint("payload: {}, response: {}".format(payload, response.text))
             return response.json()
         except requests.RequestException as e:
             return {'error': 'request_failed', 'error_description': str(e)}
@@ -162,15 +248,27 @@ class GoogleAuthBackend(AuthBackend):
 
     def get_user_id_from_token(self, token: str) -> Optional[str]:
         """
-        Extract the user ID from a Google access token.
+        Extract the user ID from a Google token.
+        Tries ID token verification first, then access token.
 
         Args:
-            token: Google access token
+            token: Google ID token or access token
 
         Returns:
             Google user ID or None if token is invalid
         """
-        user_info = self._get_user_info(token)
-        if 'sub' in user_info:
-            return user_info['sub']
+        # Try as ID token first
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+                self.client_id
+            )
+            return idinfo.get('sub')
+        except ValueError:
+            # If ID token verification fails, try as access token
+            user_info = self._get_user_info(token)
+            if 'sub' in user_info:
+                return user_info['sub']
+
         return None

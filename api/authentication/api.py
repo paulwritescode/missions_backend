@@ -7,13 +7,14 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from authentication.backends import get_backend
+from authentication.permissions import get_user
 from authentication.schemas import (
     AuthProviderListResponse,
     AuthResponse,
     LoginRequest,
     SocialAuthRequest,
     SocialAuthResponse,
-    TokenVerificationResponse
+    TokenVerificationResponse, TokenRefreshIn
 )
 from authentication.utils import get_auth_for_user, authenticate_social_user
 from users.models import AuthProvider, User
@@ -101,21 +102,37 @@ def social_auth(request, data: SocialAuthRequest):
 
 
 @router.post("/refresh", response=AuthResponse)
-def refresh_token(request):
+def refresh_token(request, data: TokenRefreshIn):
     """
     Token refresh endpoint.
 
-    Expects an authenticated user via JWT token in Authorization header.
-    Returns a new token with refreshed expiration.
+    Expects an access token in the request body.
+    Validates the token and returns a new one with refreshed expiration.
     """
-    user = request.user
+    jwt_backend = get_backend('jwt')
+    if not jwt_backend:
+        raise HttpError(500, "JWT backend not available")
 
-    if not user or not user.is_authenticated:
+    # ✅ Verify and decode the incoming access token
+    try:
+        payload = jwt_backend.decode_token(data.access_token)
+    except Exception:
         raise HttpError(401, "Invalid or expired token")
 
-    # Generate new authentication data
+    # ✅ Extract user_id from the payload
+    user_id = payload.get("user_id") or payload.get("id")
+    if not user_id:
+        raise HttpError(401, "Invalid token payload")
+
+    # ✅ Fetch user
+    user = User.objects.filter(id=user_id).first()
+    if not user:
+        raise HttpError(401, "User not found or token invalid")
+
+    # ✅ Generate a new token
     auth_data = get_auth_for_user(user)
     return auth_data
+
 
 
 @router.get("/verify", response=TokenVerificationResponse)
@@ -174,15 +191,3 @@ def auth_providers(request):
 
     return {"providers": providers_data}
 
-
-# Custom authentication for Django Ninja
-def get_user(request: HttpRequest) -> User:
-    """
-    Authentication function for Django Ninja.
-
-    This can be used with NinjaAPI's authentication parameter.
-    """
-    user = request.user
-    if user and user.is_authenticated:
-        return user
-    return None

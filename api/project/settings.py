@@ -167,4 +167,4 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Authentication backends configuration
 GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID", default=None)
 GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET", default=None)
-GOOGLE_REDIRECT_URI = config("GOOGLE_REDIRECT_URI", default="/api/auth/google/callback")
+GOOGLE_REDIRECT_URI = config("GOOGLE_REDIRECT_URI", default="https://developers.google.com/oauthplayground")

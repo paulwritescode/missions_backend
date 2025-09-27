@@ -10,11 +10,11 @@ import jwt
 import requests
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
 from django.http import HttpRequest
 
 from authentication.backends.base import AuthBackend
+from authentication.constants import AuthBackendType
 from authentication.backends.registry import register_backend
 
 
@@ -25,8 +25,8 @@ class AppleAuthBackend(AuthBackend):
 
     This backend handles authentication with Apple's Sign in with Apple service.
     """
-    name = 'apple'
-    display_name = 'Apple'
+    name = AuthBackendType.APPLE.value
+    display_name = AuthBackendType.APPLE.label
     supports_registration = True
     requires_config = True
 
@@ -46,6 +46,7 @@ class AppleAuthBackend(AuthBackend):
 
         # Optional config
         self.scope = self.config.get('scope', 'email name')
+        self.validate_config()
 
     def validate_config(self) -> None:
         """Ensure required configuration is present."""

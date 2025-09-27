@@ -37,8 +37,7 @@ class JWTAuthBackend(AuthBackend):
         # Use settings from config or fall back to defaults
         self.jwt_secret = self.config.get('secret_key', self.DEFAULT_JWT_SECRET)
         self.algorithm = self.config.get('algorithm', self.DEFAULT_JWT_ALGORITHM)
-        self.token_expiration = self.config.get('expiration_delta',
-                                               self.DEFAULT_JWT_EXPIRATION)
+        self.token_expiration = self.config.get('expiration_delta', self.DEFAULT_JWT_EXPIRATION)
 
     def generate_token(self, user: User) -> Dict:
         """
@@ -134,3 +133,11 @@ class JWTAuthBackend(AuthBackend):
             return payload.get('user_id')
         except jwt.PyJWTError:
             return None
+
+    def decode_token(self, token: str) -> dict:
+        """
+        Decode a JWT token and return its payload.
+
+        Raises jwt.PyJWTError if token is invalid or expired.
+        """
+        return jwt.decode(token, self.jwt_secret, algorithms=[self.algorithm])

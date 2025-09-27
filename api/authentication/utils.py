@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple
 from django.conf import settings
 
 from authentication.backends import get_backend
-from users.models import User, AuthProvider, UserAuthProvider
+from users.models import User, AuthProvider, UserAuthProvider, Role
 
 
 def get_auth_for_user(user: User) -> Dict:
@@ -99,10 +99,19 @@ def authenticate_social_user(
         Tuple of (user, created) where created is True if a new user was created
     """
     # Check if this provider exists
-    try:
-        provider = AuthProvider.objects.get(name=provider_name, is_active=True)
-    except AuthProvider.DoesNotExist:
-        raise ValueError(f"Auth provider '{provider_name}' does not exist or is inactive")
+    provider, _ = AuthProvider.objects.get_or_create(
+        name=provider_name,
+        defaults={
+            "display_name": provider_name.capitalize(),
+            "backend_class": f"authentication.backends.{provider_name}.{provider_name.capitalize()}AuthBackend",
+            "config": {},
+            "is_active": True,
+            "allow_registration": True,
+        },
+    )
+
+    if not provider.is_active:
+        raise ValueError(f"Auth provider '{provider_name}' exists but is inactive")
 
     # Check if user already exists with this provider
     user_auth = UserAuthProvider.objects.filter(
@@ -159,5 +168,15 @@ def authenticate_social_user(
         provider_data=provider_data or {},
         is_primary=created  # Set as primary if this is a new user
     )
+
+    missioner_role, _ = Role.objects.get_or_create(
+        name="missioner",
+        defaults={
+            "permissions": [],
+            "description": "Role for mission participants"
+        }
+    )
+    if not user.roles.filter(id=missioner_role.id).exists():
+        user.roles.add(missioner_role)
 
     return user, created

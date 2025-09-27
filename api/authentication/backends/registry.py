@@ -4,6 +4,7 @@ Authentication backend registry system.
 from typing import Dict, Optional, Type
 
 from authentication.backends.base import AuthBackend
+from authentication.constants import AuthBackendType, config_dict
 
 # Global registry of authentication backends
 registry: Dict[str, Type[AuthBackend]] = {}
@@ -37,19 +38,18 @@ def register_backend(backend_class: Type[AuthBackend]) -> Type[AuthBackend]:
     return backend_class
 
 
-def get_backend(name: str, config: dict = None) -> Optional[AuthBackend]:
+def get_backend(name: str) -> Optional[AuthBackend]:
     """
     Get an instance of an authentication backend by name.
 
     Args:
         name: The unique name of the backend.
-        config: Optional configuration to pass to the backend.
 
     Returns:
         An instance of the requested backend, or None if not found.
     """
+    config = config_dict.get(name, {})
     backend_class = registry.get(name)
     if not backend_class:
         return None
-
     return backend_class(config)
