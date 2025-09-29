@@ -7,6 +7,7 @@ from django.conf import settings
 
 from authentication.backends import get_backend
 from users.models import User, AuthProvider, UserAuthProvider, Role
+from users.services import get_or_create_template_role
 
 
 def get_auth_for_user(user: User) -> Dict:
@@ -169,14 +170,9 @@ def authenticate_social_user(
         is_primary=created  # Set as primary if this is a new user
     )
 
-    missioner_role, _ = Role.objects.get_or_create(
-        name="missioner",
-        defaults={
-            "permissions": [],
-            "description": "Role for mission participants"
-        }
-    )
-    if not user.roles.filter(id=missioner_role.id).exists():
+    # Ensure user has 'missioner' role
+    missioner_role = get_or_create_template_role('missioner')
+    if not user.roles.filter(id=missioner_role.pk).exists():
         user.roles.add(missioner_role)
 
     return user, created

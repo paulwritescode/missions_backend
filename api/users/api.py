@@ -1,10 +1,133 @@
-from ninja import Router
+from django.http import JsonResponse
+from ninja import Router, Query
+
+from authentication import schemas as auth_schemas
+from authentication.permissions import jwt_auth
+from base.api import paginate_response
+from base.schemas import DetailOut
+from users import selectors, services, schemas
+from users.decorators import require_permission
 
 router = Router(
     tags=["users"],
 )
 
 
-@router.get("/")
-def test_api(request):
-    return {"message": "Endpoint is working"}
+@router.get(
+    "/",
+    response={200: list[auth_schemas.UserData], 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("list_users")
+def users_list_api(request, params: schemas.UserFilterSchema = Query(...)):
+    users = selectors.users_list(filters=params.dict())
+    response = paginate_response(
+        queryset=users,
+        request=request,
+        schema=auth_schemas.UserData,
+        page=params.page,
+        page_size=params.page_size
+    )
+    return JsonResponse(response, safe=False)
+
+
+@router.post(
+    "/create/",
+    response={200: auth_schemas.UserData, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("add_user")
+def create_user_api(request, user_in: schemas.UserCreate):
+    user = services.create_user(**user_in.dict())
+    return auth_schemas.UserData(**user.to_dict(request))
+
+
+@router.post(
+    "/activate/{user_id}/",
+    response={200: auth_schemas.UserData, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("activate_user")
+def activate_user_api(request, user_id: int):
+    user = services.activate_user(user_id=user_id)
+    return auth_schemas.UserData(**user.to_dict(request))
+
+
+@router.post(
+    "/deactivate/{user_id}/",
+    response={200: auth_schemas.UserData, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("deactivate_user")
+def deactivate_user_api(request, user_id: int):
+    user = services.deactivate_user(user_id=user_id)
+    return auth_schemas.UserData(**user.to_dict(request))
+
+
+# ROLES AND PERMISSIONS
+
+
+@router.get(
+    "/roles/",
+    response={200: list[schemas.RoleSchema], 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("list_roles")
+def list_roles_api(request, params: schemas.RoleQuery = Query(...)):
+    roles = selectors.roles_list(filters=params.dict())
+    response = paginate_response(
+        queryset=roles,
+        request=request,
+        schema=schemas.RoleSchema,
+        page=params.page,
+        page_size=params.page_size
+    )
+    return JsonResponse(response, safe=False)
+
+
+@router.get(
+    "/permissions/",
+    response={200: list[str], 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("list_permissions")
+def list_permissions_api(request, params: schemas.PermissionQuery = Query(...)):
+    permissions = selectors.list_permissions(**params.dict())
+    return permissions
+
+
+@router.post(
+    "/roles/create/",
+    response={200: schemas.RoleOut, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("create_role")
+def create_role_api(request, role_in: schemas.RoleCreate):
+    role = services.create_role(
+        name=role_in.name,
+        permissions=role_in.permissions,
+        description=role_in.description or ''
+    )
+    return schemas.RoleOut(**role.to_dict())
+
+
+@router.get(
+    "/{user_id}/",
+    response={200: auth_schemas.UserData, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("view_user")
+def get_user_api(request, user_id: int):
+    user = selectors.user_details(user_id=user_id)
+    return auth_schemas.UserData(**user.to_dict(request))
+
+
+@router.get(
+    "/roles/{role_id}/",
+    auth=jwt_auth,
+    response={200: schemas.RoleOut, 400: DetailOut},
+)
+@require_permission("view_role")
+def get_role_api(request, role_id: int):
+    role = selectors.role_details(role_id=role_id)
+    return schemas.RoleOut(**role.to_dict())

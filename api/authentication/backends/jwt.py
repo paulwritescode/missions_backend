@@ -1,10 +1,11 @@
 """
 JWT authentication backend implementation.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from typing import Dict, Optional, Tuple
 
 import jwt
+import pytz
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils import timezone
@@ -98,10 +99,17 @@ class JWTAuthBackend(AuthBackend):
         try:
             # Decode and validate token
             payload = jwt.decode(token, self.jwt_secret, algorithms=[self.algorithm])
-
+            nairobi_tz = pytz.timezone("Africa/Nairobi")
             # Check expiration
-            if 'exp' in payload and datetime.fromtimestamp(payload['exp']) < timezone.now():
-                return False, {}, "Token has expired"
+            if 'exp' in payload:
+                # ✅ Use datetime.timezone.utc instead of timezone.utc
+                exp_dt = datetime.fromtimestamp(payload['exp'], tz=dt_timezone.utc).astimezone(nairobi_tz)
+
+                # Get current time in Nairobi
+                now_nairobi = timezone.now().astimezone(nairobi_tz)
+
+                if exp_dt < now_nairobi:
+                    return False, {}, "Token has expired"
 
             # Return user data
             user_data = {

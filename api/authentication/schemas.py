@@ -16,9 +16,9 @@ class LoginRequest(Schema):
 class SocialAuthRequest(Schema):
     """Schema for social authentication requests."""
     provider: str
-    # token: Optional[str] = None
     code: Optional[str] = None
-    # user: Optional[Dict[str, Any]] = None  # For Apple's initial auth with name data
+    token: Optional[str] = None
+    user: Optional[Dict[str, Any]] = None  # For Apple's initial auth with name data
 
 
 class TokenData(Schema):
@@ -30,12 +30,11 @@ class TokenData(Schema):
 
 class UserData(Schema):
     """Schema for user data returned in auth responses."""
-    id: str
+    id: int
     email: EmailStr
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     display_name: str
-    auth_provider: str
     roles: List[str] = []
     is_superuser: bool = False
     is_staff: bool = False

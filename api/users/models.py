@@ -1,8 +1,10 @@
 import os
+from typing import Dict, Any
 
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.http import HttpRequest
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
@@ -23,7 +25,7 @@ def get_user_photos_dir(instance, filename):
     return os.path.join("users", "photos", formatted_email, "{}{}".format(timestamp, ext))
 
 
-class Role(models.Model):
+class Role(BaseModel):
     """Role model with dynamic permissions"""
 
     name = models.CharField(max_length=100, unique=True)
@@ -50,6 +52,13 @@ class Role(models.Model):
     def has_permission(self, permission):
         """Check if role has a specific permission"""
         return permission in self.permissions
+
+    def to_dict(self, request: HttpRequest = None) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "id": self.pk,
+        })
+        return data
 
     class Meta:
         db_table = 'roles'
@@ -236,6 +245,15 @@ class User(AbstractUser, BaseModel):
         """Activate user account"""
         self.is_active = True
         self.save(update_fields=['is_active'])
+
+    def to_dict(self, request: HttpRequest = None) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "id": self.pk,
+            "display_name": self.get_display_name(),
+            "roles": list(self.roles.values_list('name', flat=True)),
+        })
+        return data
 
     def __str__(self):
         return f"{self.get_display_name()} ({self.email})"

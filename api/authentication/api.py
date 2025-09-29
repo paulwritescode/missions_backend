@@ -7,7 +7,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from authentication.backends import get_backend
-from authentication.permissions import get_user
+from authentication.permissions import jwt_auth
 from authentication.schemas import (
     AuthProviderListResponse,
     AuthResponse,
@@ -17,12 +17,16 @@ from authentication.schemas import (
     TokenVerificationResponse, TokenRefreshIn
 )
 from authentication.utils import get_auth_for_user, authenticate_social_user
+from base.schemas import DetailOut
 from users.models import AuthProvider, User
 
 router = Router(tags=["auth"])
 
 
-@router.post("/login", response=AuthResponse)
+@router.post(
+    "/login",
+    response={200: AuthResponse, 400: DetailOut, 401: DetailOut, 403: DetailOut}
+)
 def login(request, data: LoginRequest):
     """
     Traditional email/password login endpoint.
@@ -46,7 +50,10 @@ def login(request, data: LoginRequest):
     return auth_data
 
 
-@router.post("/social", response=SocialAuthResponse)
+@router.post(
+    "/social",
+    response={200: SocialAuthResponse, 400: DetailOut, 401: DetailOut}
+)
 def social_auth(request, data: SocialAuthRequest):
     """
     Social authentication endpoint.
@@ -101,7 +108,11 @@ def social_auth(request, data: SocialAuthRequest):
     return response_data
 
 
-@router.post("/refresh", response=AuthResponse)
+@router.post(
+    "/refresh",
+    response={200: AuthResponse, 400: DetailOut},
+    auth=jwt_auth
+)
 def refresh_token(request, data: TokenRefreshIn):
     """
     Token refresh endpoint.
@@ -131,7 +142,11 @@ def refresh_token(request, data: TokenRefreshIn):
 
 
 
-@router.get("/verify", response=TokenVerificationResponse)
+@router.get(
+    "/verify",
+    response=TokenVerificationResponse,
+    auth=jwt_auth
+)
 def verify_token(request):
     """
     Token verification endpoint.

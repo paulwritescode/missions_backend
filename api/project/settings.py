@@ -136,10 +136,8 @@ NINJA_JWT = {
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
-
+TIME_ZONE = "Africa/Nairobi"
 USE_I18N = True
-
 USE_TZ = True
 
 AUTH_USER_MODEL = "users.User"
@@ -162,6 +160,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+DEFAULT_PAGE_SIZE = 50
 
 
 # Authentication backends configuration
