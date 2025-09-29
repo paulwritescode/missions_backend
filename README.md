@@ -60,6 +60,7 @@ missions_backend
     │   │   ├── constants.py
     │   │   ├── __init__.py
     │   │   ├── middleware.py
+    │   │   ├── permissions_list.py
     │   │   ├── permissions.py
     │   │   ├── schemas.py
     │   │   └── utils.py
@@ -88,12 +89,18 @@ missions_backend
     │       ├── api.py
     │       ├── apps.py
     │       ├── constants.py
+    │       ├── decorators.py
+    │       ├── filters.py
     │       ├── __init__.py
     │       ├── managers.py
     │       ├── migrations
     │       │   ├── 0001_initial.py
+    │       │   ├── 0002_role_is_archived.py
     │       │   └── __init__.py
     │       ├── models.py
+    │       ├── schemas.py
+    │       ├── selectors.py
+    │       ├── services.py
     │       └── tests.py
     ├── docker-compose.yaml
     ├── Dockerfile
@@ -103,7 +110,6 @@ missions_backend
     ├── poetry.lock
     ├── pyproject.toml
     └── README.md
-
 ```
 
 ## Services
