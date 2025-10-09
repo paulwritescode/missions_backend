@@ -1,7 +1,13 @@
+import datetime
+import decimal
+import uuid
 from decimal import Decimal
-from typing import Union
+from enum import Enum
+from typing import Union, Optional, Any, Type, Callable
 
-from missions_backend.api.base.utils.exceptions import CustomValidationError
+from django.db import models
+
+from base.utils.exceptions import CustomValidationError
 
 
 def commas(value: Union[Decimal, int, float]) -> str:
@@ -14,3 +20,79 @@ def format_phone_number(phone_number):
         raise CustomValidationError("Invalid Phone Number")
     phone = phone_number[-9:]
     return "+254{}".format(phone)
+
+
+def apply_sorting(
+    qs: models.QuerySet,
+    sort_by: str = "created_at",
+    is_desc: bool = True,
+    allowed_fields: Optional[list[str]] = None
+) -> models.QuerySet:
+    """
+    Apply dynamic sorting to a queryset, with safe field validation.
+    """
+    if not allowed_fields:
+        allowed_fields = ["created_at"]
+
+    # Fallback to created_at if not allowed
+    if sort_by not in allowed_fields:
+        sort_by = "created_at"
+
+    prefix = "-" if is_desc else ""
+    return qs.order_by(f"{prefix}{sort_by}")
+
+
+def serialize_types(
+    data: Any,
+    type_serializers: dict[Type, Callable[[Any], Any]] | None = None,
+    readable: bool = True,
+) -> Any:
+    """
+    Recursively serialize specified types within nested data structures,
+    with optional readable formatting for time and date values.
+
+    Args:
+        data: The data (dict, list, or primitive) to process.
+        type_serializers: A dictionary mapping types to serializer functions.
+        readable: If True, use human-friendly formats for time/date types.
+
+    Returns:
+        The same structure with all matching types converted.
+    """
+
+    if type_serializers is None:
+        def serialize_date(v: datetime.date):
+            return v.strftime("%A, %d %B %Y") if readable else v.isoformat()
+
+        def serialize_time(v: datetime.time):
+            return v.strftime("%I:%M %p") if readable else v.isoformat()
+
+        def serialize_datetime(v: datetime.datetime):
+            return v.strftime("%A, %d %B %Y %I:%M %p") if readable else v.isoformat()
+
+        type_serializers = {
+            datetime.date: serialize_date,
+            datetime.datetime: serialize_datetime,
+            datetime.time: serialize_time,
+            decimal.Decimal: str,
+            uuid.UUID: str,
+            Enum: lambda v: v.value,
+        }
+
+    # Handle lists
+    if isinstance(data, list):
+        return [serialize_types(item, type_serializers, readable) for item in data]
+
+    # Handle dicts
+    if isinstance(data, dict):
+        return {
+            key: serialize_types(value, type_serializers, readable)
+            for key, value in data.items()
+        }
+
+    # Handle direct type match
+    for t, serializer in type_serializers.items():
+        if isinstance(data, t):
+            return serializer(data)
+
+    return data

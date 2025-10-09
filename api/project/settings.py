@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "base",
     "users",
+    "missions",
 ]
 
 MIDDLEWARE = [

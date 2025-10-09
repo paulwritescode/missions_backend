@@ -59,6 +59,12 @@ ALL_PERMISSIONS = {
     "view_missioner_stats",
     "view_admin_stats",
     "list_permissions",
+    "create_jia_participant",
+    "view_jia_participant",
+    "list_jia_participants",
+    "update_jia_participant",
+    "delete_jia_participant",
+    "view_exec_dashboard",
 }
 
 # Permission templates for different roles
@@ -91,6 +97,8 @@ MISSIONER_PERMISSIONS = {
     "update_progress_update",
     "view_progress_update",
     "view_missioner_stats",
+    "sign_up",
+    "view_jia_participant",
 }
 
 STAFF_PERMISSIONS = MISSIONER_PERMISSIONS | {
@@ -112,6 +120,11 @@ STAFF_PERMISSIONS = MISSIONER_PERMISSIONS | {
     "update_photo_gallery",
     "delete_photo_gallery",
     "update_progress_update",
+    "create_jia_participant",
+    "update_jia_participant",
+    "view_jia_participant",
+    "list_jia_participants",
+    "delete_jia_participant",
 }
 
 ADMIN_PERMISSIONS = STAFF_PERMISSIONS | {
@@ -134,6 +147,7 @@ ADMIN_PERMISSIONS = STAFF_PERMISSIONS | {
     "view_missioner_stats",
     "view_auditlog",
     "list_permissions"
+    "delete_jia_participant",
 }
 
 EXEC_PERMISSIONS = {
@@ -163,6 +177,8 @@ EXEC_PERMISSIONS = {
     "list_auditlogs",
     "view_missioner_stats",
     "view_exec_dashboard",
+    "view_jia_participant",
+    "list_jia_participants",
 }
 
 SUPERUSER_PERMISSIONS = ALL_PERMISSIONS
