@@ -34,6 +34,8 @@ class UserCreate(Schema):
     first_name: str | None = None
     last_name: str | None = None
     password: str
+    profile_photo: str | None = None
+    preferred_username: str | None = None
     role_id: int | None = None
     permissions: list[str] | None = None
     role_name: str | None = None
