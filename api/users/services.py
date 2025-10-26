@@ -1,8 +1,11 @@
 from typing import Optional, List
 
+from django.core.exceptions import ValidationError
+
 from base.utils.exceptions import CustomValidationError
 from authentication import permissions_list
 from users.models import User, Role
+from users.schemas import UserType
 from users.selectors import role_details, user_details
 
 
@@ -13,7 +16,7 @@ def create_user(
     last_name: str = '',
     preferred_username: str = None,
     profile_photo: Optional[str] = None,
-    user_type: Optional[str] = None,
+    user_type: Optional[UserType] = None,
     role_id: Optional[int] = None,
     permissions: Optional[list] = None,
     role_name: Optional[str] = None
@@ -38,39 +41,57 @@ def create_user(
         ValueError: If email is not provided
         CustomValidationError: If neither permissions nor role_id is provided
     """
-    email = email.lower()
-    user = User(
-        email=email,
-        first_name=first_name,
-        last_name=last_name,
-        preferred_username=preferred_username,
-        profile_photo=profile_photo
-    )
+    try:
+        email = email.lower()
+        with transaction.atomic():
+            user = User(
+                email=email,
+                username=email,
+                first_name=first_name,
+                last_name=last_name,
+                preferred_username=preferred_username,
+                profile_photo=profile_photo
+            )
 
-    if password:
-        user.set_password(password)
-    else:
-        user.set_unusable_password()
+            if password:
+                user.set_password(password)
+            else:
+                user.set_unusable_password()
+            user.full_clean()
+            user.save()
 
-    user.save()
+            if user_type:
+                template_role = get_or_create_template_role(user_type.value)
+                user.roles.add(template_role)
+                return user
 
-    if user_type:
-        template_role = get_or_create_template_role(user_type)
-        user.roles.add(template_role)
-        return user
-
-    if not permissions and not role_id:
-        raise CustomValidationError("Either permissions or role_id must be provided")
-    if role_id:
-        role = role_details(role_id=role_id)
-    else:
-        if not role_name:
-            raise CustomValidationError("role_name must be provided when creating a role with permissions")
-        role = create_role(name=role_name, permissions=permissions or [])
-    if role:
-        user.roles.add(role)
-    return user
-
+            if not permissions and not role_id:
+                raise CustomValidationError("Either permissions or role_id must be provided")
+            if role_id:
+                role = role_details(role_id=role_id)
+            else:
+                if not role_name:
+                    raise CustomValidationError("role_name must be provided when creating a role with permissions")
+                role = create_role(name=role_name, permissions=permissions or [])
+            if role:
+                user.roles.add(role)
+            return user
+    except IntegrityError:
+        raise CustomValidationError("There exists a user with the provided details")
+    except ValidationError as e:
+        if hasattr(e, "message_dict"):
+            errors = []
+            for field, messages in e.message_dict.items():
+                for msg in messages:
+                    errors.append(msg)
+            error_message = "; ".join(errors)
+        elif hasattr(e, "messages"):
+            error_message = "; ".join(e.messages)
+        else:
+            error_message = str(e)
+        raise CustomValidationError(error_message)
+    except Exception as e:
+        raise CustomValidationError("An unexpected error occurred: {}".format(e))
 
 def register_missioner(
     email: str,
@@ -94,13 +115,14 @@ def register_missioner(
         preferred_username=preferred_username,
         password=password,
         profile_photo=profile_photo,
-        user_type="missioner"
+        user_type=UserType.MISSIONER
     )
 
     return user
 
 
-from django.db import transaction
+from django.db import transaction, IntegrityError
+
 
 def create_role(name: str, permissions: list, description: str = '') -> Role:
     if not name:

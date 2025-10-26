@@ -3,7 +3,7 @@ Authentication API endpoints using Django Ninja.
 """
 from django.contrib.auth import authenticate
 from django.http import HttpRequest
-from ninja import Router
+from ninja import Router, Form
 from ninja.errors import HttpError
 
 from authentication.backends import get_backend
@@ -56,7 +56,7 @@ def login(request, data: LoginRequest):
     "/manual_register",
     response={200: UserData, 400: DetailOut},
 )
-def manual_registration_api(request, user_in: ManualRegisterRequest):
+def manual_registration_api(request, user_in: ManualRegisterRequest = Form(...)):
     profile_photo = request.FILES.get("profile_photo")
     user = user_services.register_missioner(
         profile_photo=profile_photo,
