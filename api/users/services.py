@@ -2,7 +2,7 @@ from typing import Optional, List
 
 from django.core.exceptions import ValidationError
 
-from base.utils.exceptions import CustomValidationError
+from base.utils.exceptions import CustomValidationError, handle_cleaning_error
 from authentication import permissions_list
 from users.models import User, Role
 from users.schemas import UserType
@@ -79,16 +79,7 @@ def create_user(
     except IntegrityError:
         raise CustomValidationError("There exists a user with the provided details")
     except ValidationError as e:
-        if hasattr(e, "message_dict"):
-            errors = []
-            for field, messages in e.message_dict.items():
-                for msg in messages:
-                    errors.append(msg)
-            error_message = "; ".join(errors)
-        elif hasattr(e, "messages"):
-            error_message = "; ".join(e.messages)
-        else:
-            error_message = str(e)
+        error_message = handle_cleaning_error(e)
         raise CustomValidationError(error_message)
     except Exception as e:
         raise CustomValidationError("An unexpected error occurred: {}".format(e))
