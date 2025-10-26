@@ -23,7 +23,7 @@ class RoleSchema(BaseOut):
     permissions: list[str]
 
 
-class UserFilterSchema(Schema):
+class UserFilterSchema(BaseQuery):
     search: Optional[str] = None
     roles: Optional[List[str]] = None
     is_active: Optional[bool] = None
