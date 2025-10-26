@@ -14,10 +14,12 @@ from authentication.schemas import (
     LoginRequest,
     SocialAuthRequest,
     SocialAuthResponse,
-    TokenVerificationResponse, TokenRefreshIn
+    TokenVerificationResponse, TokenRefreshIn,
+    UserData, ManualRegisterRequest
 )
 from authentication.utils import get_auth_for_user, authenticate_social_user
 from base.schemas import DetailOut
+from users import services as user_services
 from users.models import AuthProvider, User
 
 router = Router(tags=["auth"])
@@ -48,6 +50,19 @@ def login(request, data: LoginRequest):
     # Generate authentication data
     auth_data = get_auth_for_user(user)
     return auth_data
+
+
+@router.post(
+    "/manual_register",
+    response={200: UserData, 400: DetailOut},
+)
+def manual_registration_api(request, user_in: ManualRegisterRequest):
+    profile_photo = request.FILES.get("profile_photo")
+    user = user_services.register_missioner(
+        profile_photo=profile_photo,
+        **user_in.dict(exclude=["profile_photo"])
+    )
+    return UserData(**user.to_dict(request))
 
 
 @router.post(

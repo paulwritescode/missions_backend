@@ -11,10 +11,12 @@ def create_user(
     password: str = None,
     first_name: str = '',
     last_name: str = '',
+    preferred_username: str = None,
+    profile_photo: Optional[str] = None,
     user_type: Optional[str] = None,
     role_id: Optional[int] = None,
     permissions: Optional[list] = None,
-    role_name: Optional[str] = None,
+    role_name: Optional[str] = None
 ) -> User:
     """
     Create a new user with the given details.
@@ -24,6 +26,8 @@ def create_user(
         password: User's password (optional)
         first_name: User's first name (optional)
         last_name: User's last name (optional)
+        preferred_username: User's preferred username (optional)
+        profile_photo: User's profile photo (optional)
         user_type: Type of the user to assign a template role (e.g., 'admin', 'missioner') (optional)
         role_id: ID of an existing role to assign to the user (optional)
         permissions: List of permissions to create a new role with (optional)
@@ -34,11 +38,14 @@ def create_user(
         ValueError: If email is not provided
         CustomValidationError: If neither permissions nor role_id is provided
     """
-    if not email:
-        raise ValueError("Email is required to create a user")
-
     email = email.lower()
-    user = User(email=email, first_name=first_name, last_name=last_name)
+    user = User(
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        preferred_username=preferred_username,
+        profile_photo=profile_photo
+    )
 
     if password:
         user.set_password(password)
@@ -62,6 +69,34 @@ def create_user(
         role = create_role(name=role_name, permissions=permissions or [])
     if role:
         user.roles.add(role)
+    return user
+
+
+def register_missioner(
+    email: str,
+    first_name: str,
+    last_name: str,
+    password: str,
+    confirm_password: str,
+    preferred_username: Optional[str] = None,
+    profile_photo: Optional[str] = None
+):
+    if password != confirm_password:
+        raise CustomValidationError("Passwords did not match")
+
+    if preferred_username is None:
+        preferred_username = first_name
+
+    user = create_user(
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        preferred_username=preferred_username,
+        password=password,
+        profile_photo=profile_photo,
+        user_type="missioner"
+    )
+
     return user
 
 

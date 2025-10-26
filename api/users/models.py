@@ -264,5 +264,3 @@ class User(AbstractUser, BaseModel):
             models.Index(fields=['email']),
             models.Index(fields=['username']),
         ]
-
-

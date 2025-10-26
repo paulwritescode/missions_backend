@@ -4,7 +4,7 @@ Authentication schemas for Django Ninja API.
 from typing import Dict, List, Optional, Any
 
 from ninja import Schema
-from pydantic import EmailStr, Field
+from pydantic import EmailStr, Field, model_validator
 
 
 class LoginRequest(Schema):
@@ -26,6 +26,17 @@ class TokenData(Schema):
     access_token: str
     token_type: str
     expires_in: int
+
+
+class ManualRegisterRequest(Schema):
+    """Schema for user manual registration."""
+    email: EmailStr
+    first_name: str
+    last_name: str
+    preferred_username: Optional[str] = None
+    profile_photo: Optional[str] = None
+    password: str
+    confirm_password: str
 
 
 class UserData(Schema):
