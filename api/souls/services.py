@@ -9,13 +9,27 @@
 from django.core.exceptions import ValidationError
 
 from base.utils.exceptions import CustomValidationError, handle_cleaning_error
-from missions_backend.api.souls.models import Soul, ProgressUpdate
+from missions.selectors import location_details, mission_details
+from souls.models import Soul, ProgressUpdate
 from souls.selectors import get_soul
+from users.selectors import user_details
 
 
 def create_soul(data) -> Soul:
 
     try:
+        location_id = data.get("location")
+        user_id = data.get("user")
+        mission_id = data.get("mission")
+        if location_id is not None:
+            location = location_details(location_id)
+            data["location"] = location
+        if user_id is not None:
+            user = user_details(user_id)
+            data["user"] = user
+        if mission_id is not None:
+            mission = mission_details(mission_id)
+            data["mission"] = mission
         soul = Soul(**data)
         soul.full_clean()
         soul.save()
