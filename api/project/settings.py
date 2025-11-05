@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     "base",
     "users",
     "missions",
-    "souls"
+    "souls",
+    "testimonies",
 ]
 
 MIDDLEWARE = [

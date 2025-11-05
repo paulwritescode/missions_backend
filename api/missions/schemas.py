@@ -41,16 +41,32 @@ class MissionsFilterSchema(BaseQuery):
     search: str | None = None
 
 
+class ReportSortByEnum(str, Enum):
+    CREATED_AT = "created_at"
+    TITLE = "title"
+
+
 class ReportsFilterSchema(BaseQuery, FilterQuery):
     mission_id: int | None = None
     created_by_id: int | None = None
     search: str | None = None
+    is_desc: bool | None = True
+    sort_by: ReportSortByEnum | None = None
+
+
+class MissionJIASortByEnum(str, Enum):
+    CREATED_AT = "created_at"
+    FULL_NAME = "full_name"
+    PHONE_NUMBER = "phone_number"
+    TRAVELLING_FROM = "travelling_from"
 
 
 class MissionJIAFilterSchema(BaseQuery, FilterQuery):
     user_id: int | None = None
     need_facilitation: bool | None = None
     gender: GenderChoices | None = None
+    sort_by: MissionJIASortByEnum | None = None
+    is_desc: bool | None = True
 
 
 class MissionGalleryFilterSchema(BaseQuery, FilterQuery):

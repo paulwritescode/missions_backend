@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 from typing import Optional
 
 from ninja import Schema
@@ -8,7 +9,23 @@ from souls.constants import SoulStatus
 from users.constants import GenderType, AgeGroupCategory
 
 
-class SoulsQuery(BaseQuery, FilterQuery):
+class AgeGroupEnum(str, Enum):
+    CHILD = '0-12'
+    TEEN = '13-17'
+    YOUNG_ADULT = '18-24'
+    ADULT = '25-39'
+    MATURE_ADULT = '40-59'
+    SENIOR = '60+'
+
+
+class SoulsListByEnum(str, Enum):
+    UPLOADED_AT = 'uploaded_at'
+    FIRST_NAME = 'first_name'
+    PHONE_NUMBER = 'phone_number'
+    DATE_ADDED = 'date_added'
+
+
+class SoulsQuery(BaseQuery):
     """Schema for querying souls with pagination."""
     is_personal: Optional[bool] = None
     mission: Optional[int] = None
@@ -17,10 +34,15 @@ class SoulsQuery(BaseQuery, FilterQuery):
     location: Optional[int] = None
     status: Optional[SoulStatus] = None
     search: Optional[str] = None
+    created_before: Optional[datetime.date] = None
+    created_after: Optional[datetime.date] = None
+    user: Optional[int] = None
+    sort_by: Optional[SoulsListByEnum] = None
+    is_desc: Optional[bool] = True
 
 
-class SoulCreateUpdate(Schema):
-    """Schema for creating or updating a soul."""
+class SoulCreate(Schema):
+    """Schema for creating a soul."""
     first_name: str
     last_name: str
     phone_number: str
@@ -33,6 +55,27 @@ class SoulCreateUpdate(Schema):
     is_personal: bool = False
     user: Optional[int] = None
     description: Optional[str] = None
+
+
+class SoulUpdate(Schema):
+    """Schema for updating a soul."""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    gender: Optional[GenderType] = None
+    age_group: Optional[AgeGroupCategory] = None
+    location: Optional[int] = None
+    status: Optional[SoulStatus] = None
+    date_added: Optional[datetime.date] = None
+    mission: Optional[int] = None
+    is_personal: bool = False
+    user: Optional[int] = None
+    description: Optional[str] = None
+
+
+class SoulUploadIn(Schema):
+    mission_id: int
+    location_id: int
 
 
 class SoulOut(BaseOut):
@@ -71,9 +114,7 @@ class ProgressUpdateOut(BaseOut):
     soul_full_name: Optional[str] = None
 
 
-class ProgressUpdateQuery(BaseQuery, FilterQuery):
+class ProgressUpdateQuery(BaseQuery):
     """Schema for querying progress updates with pagination."""
-    start_date: Optional[datetime.date] = None
-    end_date: Optional[datetime.date] = None
-    search: Optional[str] = None
-    soul: Optional[int] = None
+    soul_id: Optional[int] = None
+    is_desc: Optional[bool] = True

@@ -47,69 +47,120 @@ GIK missions related backend functionalities and apis.
 This will change over time, but here is the current structure:
 ```
 missions_backend
-    ├── api
-    │   ├── authentication
-    │   │   ├── api.py
-    │   │   ├── backends
-    │   │   │   ├── apple.py
-    │   │   │   ├── base.py
-    │   │   │   ├── google.py
-    │   │   │   ├── __init__.py
-    │   │   │   ├── jwt.py
-    │   │   │   └── registry.py
-    │   │   ├── constants.py
-    │   │   ├── __init__.py
-    │   │   ├── middleware.py
-    │   │   ├── permissions_list.py
-    │   │   ├── permissions.py
-    │   │   ├── schemas.py
-    │   │   └── utils.py
-    │   ├── base
-    │   │   ├── api.py
-    │   │   ├── apps.py
-    │   │   ├── filters.py
-    │   │   ├── __init__.py
-    │   │   ├── models.py
-    │   │   ├── schemas.py
-    │   │   └── utils
-    │   │       ├── exceptions.py
-    │   │       ├── helpers.py
-    │   │       └── __init__.py
-    │   ├── manage.py
-    │   ├── project
-    │   │   ├── api.py
-    │   │   ├── asgi.py
-    │   │   ├── __init__.py
-    │   │   ├── settings.py
-    │   │   ├── urls.py
-    │   │   └── wsgi.py
-    │   ├── superuser_setup.py
-    │   └── users
-    │       ├── admin.py
-    │       ├── api.py
-    │       ├── apps.py
-    │       ├── constants.py
-    │       ├── decorators.py
-    │       ├── filters.py
-    │       ├── __init__.py
-    │       ├── managers.py
-    │       ├── migrations
-    │       │   ├── 0001_initial.py
-    │       │   ├── 0002_role_is_archived.py
-    │       │   └── __init__.py
-    │       ├── models.py
-    │       ├── schemas.py
-    │       ├── selectors.py
-    │       ├── services.py
-    │       └── tests.py
-    ├── docker-compose.yaml
-    ├── Dockerfile
-    ├── .env
-    ├── .env.example
-    ├── .gitignore
-    ├── poetry.lock
-    ├── pyproject.toml
-    └── README.md
+   ├── api
+   │   ├── authentication
+   │   │   ├── api.py
+   │   │   ├── backends
+   │   │   │   ├── apple.py
+   │   │   │   ├── base.py
+   │   │   │   ├── google.py
+   │   │   │   ├── __init__.py
+   │   │   │   ├── jwt.py
+   │   │   │   └── registry.py
+   │   │   ├── constants.py
+   │   │   ├── __init__.py
+   │   │   ├── middleware.py
+   │   │   ├── permissions_list.py
+   │   │   ├── permissions.py
+   │   │   ├── schemas.py
+   │   │   └── utils.py
+   │   ├── base
+   │   │   ├── api.py
+   │   │   ├── apps.py
+   │   │   ├── filters.py
+   │   │   ├── __init__.py
+   │   │   ├── models.py
+   │   │   ├── schemas.py
+   │   │   └── utils
+   │   │       ├── exceptions.py
+   │   │       ├── file_parser.py
+   │   │       ├── helpers.py
+   │   │       └── __init__.py
+   │   ├── manage.py
+   │   ├── missions
+   │   │   ├── admin.py
+   │   │   ├── api.py
+   │   │   ├── apps.py
+   │   │   ├── constants.py
+   │   │   ├── filters.py
+   │   │   ├── __init__.py
+   │   │   ├── migrations
+   │   │   │   ├── 0001_initial.py
+   │   │   │   ├── 0002_missiongallery.py
+   │   │   │   ├── 0003_mission_created_by.py
+   │   │   │   ├── 0004_alter_mission_end_date_alter_mission_start_date.py
+   │   │   │   └── __init__.py
+   │   │   ├── models.py
+   │   │   ├── schemas.py
+   │   │   ├── selectors.py
+   │   │   ├── services.py
+   │   │   └── tests.py
+   │   ├── project
+   │   │   ├── api.py
+   │   │   ├── asgi.py
+   │   │   ├── __init__.py
+   │   │   ├── settings.py
+   │   │   ├── urls.py
+   │   │   └── wsgi.py
+   │   ├── souls
+   │   │   ├── admin.py
+   │   │   ├── api.py
+   │   │   ├── apps.py
+   │   │   ├── constants.py
+   │   │   ├── filters.py
+   │   │   ├── __init__.py
+   │   │   ├── migrations
+   │   │   │   ├── 0001_initial.py
+   │   │   │   └── __init__.py
+   │   │   ├── models.py
+   │   │   ├── schemas.py
+   │   │   ├── selectors.py
+   │   │   ├── services.py
+   │   │   └── tests.py
+   │   ├── superuser_setup.py
+   │   ├── testimonies
+   │   │   ├── admin.py
+   │   │   ├── api.py
+   │   │   ├── apps.py
+   │   │   ├── filters.py
+   │   │   ├── __init__.py
+   │   │   ├── migrations
+   │   │   │   ├── 0001_initial.py
+   │   │   │   ├── 0002_miracle_is_selected_alter_testimony_is_selected.py
+   │   │   │   └── __init__.py
+   │   │   ├── models.py
+   │   │   ├── schemas.py
+   │   │   ├── selectors.py
+   │   │   ├── services.py
+   │   │   └── tests.py
+   │   └── users
+   │       ├── admin.py
+   │       ├── api.py
+   │       ├── apps.py
+   │       ├── constants.py
+   │       ├── decorators.py
+   │       ├── filters.py
+   │       ├── __init__.py
+   │       ├── managers.py
+   │       ├── migrations
+   │       │   ├── 0001_initial.py
+   │       │   ├── 0002_role_is_archived.py
+   │       │   └── __init__.py
+   │       ├── models.py
+   │       ├── schemas.py
+   │       ├── selectors.py
+   │       ├── services.py
+   │       └── tests.py
+   ├── docker-compose.yaml
+   ├── Dockerfile
+   ├── .env
+   ├── .env.example
+   ├── .gitignore
+   ├── poetry.lock
+   ├── pyproject.toml
+   └── README.md
+
+15 directories, 98 files
 ```
 
 ## Services
@@ -280,10 +331,14 @@ For production deployment:
 3. Ensure all containers start successfully
 4. Submit a pull request
 
-## Support
 
+## Support
 If you encounter issues:
 1. Check the logs: `docker compose logs -f`
 2. Verify environment variables in `.env`
 3. Ensure Docker and Docker Compose are installed correctly
-4. Check port availability: `ss -tlnp | grep 9050`
+4. Check port availability:
+   - **Linux (Ubuntu/Kali/Arch)**: `ss -tlnp | grep 9050` or `netstat -tulnp | grep 9050`
+   - **macOS**: `lsof -i :9050` or `netstat -an | grep 9050`
+   - **Windows (PowerShell)**: `Get-NetTCPConnection -LocalPort 9050` or `netstat -ano | findstr :9050`
+   - **Windows (CMD)**: `netstat -ano | findstr :9050`

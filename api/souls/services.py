@@ -7,15 +7,35 @@
 6. Delete progress update
 """
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
 
 from base.utils.exceptions import CustomValidationError, handle_cleaning_error
-from missions_backend.api.souls.models import Soul, ProgressUpdate
+from base.utils.file_parser import FileParser
+from base.utils.helpers import validate_date
+from missions.selectors import location_details, mission_details
+from souls.models import Soul, ProgressUpdate
 from souls.selectors import get_soul
+from users.constants import GenderType, AgeGroupCategory
+from users.models import User
+from users.selectors import user_details
 
 
 def create_soul(data) -> Soul:
 
     try:
+        location_id = data.get("location")
+        user_id = data.get("user")
+        mission_id = data.get("mission")
+        if location_id is not None:
+            location = location_details(location_id)
+            data["location"] = location
+        if user_id is not None:
+            user = user_details(user_id)
+            data["user"] = user
+        if mission_id is not None:
+            mission = mission_details(mission_id)
+            data["mission"] = mission
         soul = Soul(**data)
         soul.full_clean()
         soul.save()
@@ -96,3 +116,94 @@ def delete_progress_update(progress_update_id: int) -> ProgressUpdate:
         raise CustomValidationError(f"Progress update with ID {progress_update_id} does not exist")
     except Exception as e:
         raise CustomValidationError("Error deleting progress update: {}".format(e))
+
+
+def validate_gender(value, row):
+    valid_values = [v.lower() for v in GenderType.values]
+    if value is not None and str(value).strip().lower() not in valid_values:
+        raise CustomValidationError(
+            "Invalid gender '{}' in row {}. Allowed: {}".format(
+                value, row, ", ".join(GenderType.values)
+            )
+        )
+
+
+def validate_age_group(value, row):
+    valid_values = [v.lower() for v in AgeGroupCategory.values]
+    if value is not None and str(value).strip().lower() not in valid_values:
+        raise CustomValidationError(
+            "Invalid age group '{}' in row {}. Allowed: {}".format(
+                value, row, ", ".join(AgeGroupCategory.values)
+            )
+        )
+
+
+def upload_souls(file, mission_id: int, location_id: int):
+    try:
+        mission = mission_details(mission_id)
+        location = location_details(location_id)
+
+        mandatory_fields = [
+            "missioner_email", "first_name", "last_name", "phone_number", "gender", "age_group", "description"
+        ]
+
+        readable_map = {
+            "missioner_email": "Missioner Email",
+            "first_name": "First Name",
+            "last_name": "Last Name",
+            "phone_number": "Phone Number",
+            "gender": "Gender",
+            "age_group": "Age Group",
+            "description": "Description",
+            "date_added": "Date Added",
+        }
+
+        field_validators = {
+            "gender": validate_gender,
+            "age_group": validate_age_group,
+            "date_added": validate_date,
+        }
+
+        parser = FileParser(
+            file,
+            mandatory_fields=mandatory_fields,
+            readable_field_map=readable_map,
+            field_validators=field_validators,
+        )
+
+        parsed_data = parser.to_dict()
+
+        emails = {row["missioner_email"] for row in parsed_data if row["missioner_email"]}
+        users = User.objects.filter(email__in=emails)
+        user_map = {u.email: u for u in users}
+
+        souls_to_create = []
+
+        for row in parsed_data:
+            user = user_map.get(row["missioner_email"])
+            if not user:
+                raise CustomValidationError(f"No registered user found with email '{row['missioner_email']}'")
+
+            soul = Soul(
+                first_name=row["first_name"].strip(),
+                last_name=row["last_name"].strip(),
+                phone_number=row["phone_number"].strip(),
+                gender=row["gender"].lower().strip(),
+                age_group=row["age_group"].strip(),
+                description=row["description"].strip(),
+                mission=mission,
+                location=location,
+                user=user,
+                date_added=row.get("date_added") or timezone.now().date(),
+                uploaded_at=timezone.now(),
+            )
+            souls_to_create.append(soul)
+
+        with transaction.atomic():
+            Soul.objects.bulk_create(souls_to_create, batch_size=1000)
+
+        return {"message": f"{len(souls_to_create)} souls successfully uploaded."}
+    except CustomValidationError as e:
+        raise e
+    except Exception as e:
+        raise CustomValidationError("Error uploading souls: {}".format(e))
