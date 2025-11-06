@@ -39,6 +39,20 @@ def souls_list_api(request, params: schemas.SoulsQuery = Query(...)):
     return JsonResponse(response, safe=False)
 
 
+@require_permission("souls_stats")
+@router.get(
+    "/stats/",
+    response={200: str, 400: DetailOut},
+    auth=jwt_auth
+)
+def souls_stats_api(request, params: schemas.SoulsQuery = Query(...)):
+    """API endpoint to list souls with optional filters and pagination."""
+    souls_count = selectors.souls_stats(
+        filters=params.dict()
+    )
+    return 200, souls_count
+
+
 @require_permission("create_soul")
 @router.post(
     "create/",

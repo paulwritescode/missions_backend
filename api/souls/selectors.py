@@ -45,6 +45,17 @@ def list_souls(
     return qs
 
 
+def souls_stats(filters: Optional[Dict[str, Any]] = None):
+    """Get statistics about souls with optional filters."""
+    qs = Soul.objects.all()
+    if filters:
+        qs = SoulFilter(filters, queryset=qs).qs
+    total_souls = qs.count()
+    # Add more statistics as needed
+    return {
+        "total_souls": total_souls,
+    }
+
 def get_progress_update(id: int):
     """Retrieve a progress update by its ID."""
     try:
