@@ -73,6 +73,11 @@ class SoulUpdate(Schema):
     description: Optional[str] = None
 
 
+class SoulUploadIn(Schema):
+    mission_id: int
+    location_id: int
+
+
 class SoulOut(BaseOut):
     """Schema for soul output."""
     first_name: str

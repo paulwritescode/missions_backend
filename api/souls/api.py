@@ -2,8 +2,9 @@
 from typing import List
 
 from django.http import JsonResponse
-from ninja import Router, Query
+from ninja import Router, Query, UploadedFile, File, Form
 
+from base.schemas import DetailOut
 from souls import selectors, services, schemas
 from authentication.permissions import jwt_auth
 from base.api import paginate_response
@@ -48,6 +49,34 @@ def create_soul_api(request, soul_in: schemas.SoulCreate):
     """API endpoint to create a new soul."""
     soul = services.create_soul(soul_in.dict())
     return 201, schemas.SoulOut(**soul.to_dict(request))
+
+
+@require_permission("upload_souls")
+@router.post(
+    "/upload_souls/",
+    response={200: dict, 400: DetailOut},
+    auth=jwt_auth
+)
+def upload_souls_api(
+    request,
+    mission_id: int = Form(...),
+    location_id: int = Form(...),
+    file: UploadedFile = File(...)
+):
+    """
+    Upload an Excel/CSV file of souls.
+    Example fields:
+        - missioner_email
+        - first_name
+        - last_name
+        - phone_number
+        - gender
+        - age_group
+        - description
+        - date_added
+    """
+    result = services.upload_souls(file=file, mission_id=mission_id, location_id=location_id)
+    return JsonResponse(result)
 
 
 @require_permission("update_soul")
