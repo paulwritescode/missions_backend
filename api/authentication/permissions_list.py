@@ -34,6 +34,7 @@ ALL_PERMISSIONS = {
     "view_soul",
     "update_soul",
     "delete_soul",
+    "upload_souls",
     "create_miracle",
     "list_miracles",
     "view_miracle",
@@ -125,6 +126,7 @@ STAFF_PERMISSIONS = MISSIONER_PERMISSIONS | {
     "view_jia_participant",
     "list_jia_participants",
     "delete_jia_participant",
+    "upload_souls",
 }
 
 ADMIN_PERMISSIONS = STAFF_PERMISSIONS | {
