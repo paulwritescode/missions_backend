@@ -3,7 +3,9 @@ from typing import List
 
 from django.http import JsonResponse
 from ninja import Router, Query
+from ninja_extra.controllers import Detail
 
+from base.schemas import DetailOut
 from souls import selectors, services, schemas
 from authentication.permissions import jwt_auth
 from base.api import paginate_response
@@ -36,6 +38,20 @@ def souls_list_api(request, params: schemas.SoulsQuery = Query(...)):
         page_size=params.page_size
     )
     return JsonResponse(response, safe=False)
+
+
+@require_permission("souls_stats")
+@router.get(
+    "/stats/",
+    response={200: str, 400: DetailOut},
+    auth=jwt_auth
+)
+def souls_stats_api(request, params: schemas.SoulsQuery = Query(...)):
+    """API endpoint to list souls with optional filters and pagination."""
+    souls_count = selectors.souls_stats(
+        filters=params.dict()
+    )
+    return 200, souls_count
 
 
 @require_permission("create_soul")
