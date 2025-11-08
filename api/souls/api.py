@@ -187,6 +187,7 @@ def delete_progress_update_api(request, progress_update_id: int):
     restricted_roles=["missioner_template"],
     restriction_handler=missioner_soul_operations_handler
 )
+
 @router.get(
     "/{soul_id}/",
     response={200: schemas.SoulDetailsOut},
