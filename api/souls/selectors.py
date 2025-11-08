@@ -7,6 +7,7 @@
 from enum import Enum
 from typing import Optional, Dict, Any
 
+from authentication.permissions import has_role_type
 from base.utils.exceptions import CustomValidationError
 from base.utils.helpers import apply_sorting
 from souls.filters import SoulFilter
@@ -23,6 +24,7 @@ def get_soul(soul_id: int):
 
 
 def list_souls(
+    user,
     filters: Optional[Dict[str, Any]] = None,
     sort_by: Optional[str] = None,
     is_desc: bool = True
@@ -33,6 +35,9 @@ def list_souls(
     if isinstance(sort_by, Enum):
         sort_by = sort_by.value
     qs = Soul.objects.all()
+    is_special_user = has_role_type("admin", user=user) or has_role_type("superadmin", user=user) or has_role_type("staff", user=user) or has_role_type("executive", user=user)
+    if not is_special_user:
+        qs = qs.filter(user=user)
     qs = apply_sorting(
         qs,
         sort_by=sort_by,
@@ -44,15 +49,17 @@ def list_souls(
     return qs
 
 
-def souls_stats(filters: Optional[Dict[str, Any]] = None):
+def souls_stats(user, filters: Optional[Dict[str, Any]] = None):
     """Get statistics about souls with optional filters."""
     qs = Soul.objects.all()
     if filters:
         qs = SoulFilter(filters, queryset=qs).qs
     total_souls = qs.count()
-    # Add more statistics as needed
+    personal_won_souls = qs.filter(user=user).count()
+
     return {
         "total_souls": total_souls,
+        "personal_won_souls": personal_won_souls
     }
 
 def get_progress_update(id: int):

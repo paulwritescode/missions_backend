@@ -1,6 +1,7 @@
 from functools import wraps
 from django.http import JsonResponse
 
+from authentication.permissions import has_role_type
 from base.utils.exceptions import CustomValidationError
 
 
@@ -14,7 +15,6 @@ def require_permission(permission_tag, restricted_roles=None, restriction_handle
         restricted_roles: The roles that have restrictions (e.g., ['missioner'])
         restriction_handler: The logic to handle restrictions for certain roles
     """
-
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
@@ -31,19 +31,14 @@ def require_permission(permission_tag, restricted_roles=None, restriction_handle
 
             # Gather user roles and permissions
             user_roles = user.roles.all()
-            role_names = [role.name.lower() for role in user_roles]
             user_permissions = set()
             for role in user_roles:
                 if role.permissions:
                     user_permissions.update(role.permissions)
 
-            # Helper function to check role type
-            def has_role_type(role_type):
-                return any(role_type.lower() in role_name.lower() for role_name in role_names)
-
             has_permission = permission_tag in user_permissions
 
-            if user.is_superuser or has_role_type('superuser') or has_role_type('admin'):
+            if user.is_superuser or has_role_type('superuser', roles=user_roles) or has_role_type('admin', roles=user_roles):
                 return func(request, *args, **kwargs)
 
             if not has_permission:
@@ -51,11 +46,16 @@ def require_permission(permission_tag, restricted_roles=None, restriction_handle
 
             if not restricted_roles:
                 return func(request, *args, **kwargs)
-
-            for restricted_role in restricted_roles:
-                if not has_role_type(restricted_role):
-                    continue
-                if restriction_handler:
+            # TODO: Optimize if statements
+            print("RESTRICTED_ROLES", restricted_roles)
+            if restricted_roles and restriction_handler:
+                role_names = [role.name.lower() for role in user_roles]
+                print("ROLE_NAMES", role_names)
+                restricted_lower = [r.lower() for r in restricted_roles]
+                print("RESTRICTED_LOWER", restricted_lower)
+                # Apply restriction only if ALL user roles are restricted
+                print("CONDITION", all(role_name in restricted_lower for role_name in role_names))
+                if all(role_name in restricted_lower for role_name in role_names):
                     try:
                         restriction_handler(user, kwargs)
                     except CustomValidationError as e:

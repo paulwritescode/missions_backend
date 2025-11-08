@@ -110,3 +110,31 @@ def delete_progress_update(progress_update_id: int) -> ProgressUpdate:
         raise CustomValidationError(f"Progress update with ID {progress_update_id} does not exist")
     except Exception as e:
         raise CustomValidationError("Error deleting progress update: {}".format(e))
+
+
+def progress_update_handler(user, kwargs):
+    print("SOUL ID KWARGS:", kwargs)
+    print("USER ID:", user.pk)
+    soul_id = kwargs.get("progress_update_in").soul_id if "progress_update_in" in kwargs else kwargs.get("soul_id")
+    if not soul_id:
+        return None
+    soul = get_soul(soul_id)
+    if not soul.user or soul.user.pk != user.pk:
+        raise CustomValidationError("You can only view/write/edit/delete notes for souls assigned to you.")
+    return None
+
+
+def missioner_soul_operations_handler(user, kwargs):
+    """
+    Restriction handler for missioners updating souls.
+    Ensures missioners can only update souls associated to them.
+    """
+    print("KWARGS", kwargs)
+    soul_id = kwargs.get('soul_id')
+    if not soul_id:
+        raise CustomValidationError("Soul ID is required.")
+
+    soul = get_soul(soul_id=soul_id)
+
+    if not soul.user or soul.user.pk != user.id:
+        raise CustomValidationError("You can only view/update souls assigned to you.")
