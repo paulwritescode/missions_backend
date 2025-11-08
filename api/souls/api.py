@@ -29,7 +29,6 @@ def souls_list_api(request, params: schemas.SoulsQuery = Query(...)):
         sort_by=params.sort_by,
         is_desc=params.is_desc
     )
-    print(souls)
     response = paginate_response(
         queryset=souls,
         request=request,
@@ -43,7 +42,7 @@ def souls_list_api(request, params: schemas.SoulsQuery = Query(...)):
 @require_permission("souls_stats")
 @router.get(
     "/stats/",
-    response={200: str, 400: DetailOut},
+    response={200: dict, 400: DetailOut},
     auth=jwt_auth
 )
 def souls_stats_api(request, params: schemas.SoulsQuery = Query(...)):
@@ -163,10 +162,10 @@ def delete_progress_update_api(request, progress_update_id: int):
 @require_permission("view_soul")
 @router.get(
     "/{soul_id}/",
-    response={200: schemas.SoulOut},
+    response={200: schemas.SoulDetailsOut},
     auth=jwt_auth
 )
 def soul_details_api(request, soul_id: int):
     """API endpoint to retrieve details of a specific soul by ID."""
     soul = selectors.get_soul(soul_id=soul_id)
-    return schemas.SoulOut(**soul.to_dict(request))
+    return schemas.SoulDetailsOut(**soul.to_dict_details(request))

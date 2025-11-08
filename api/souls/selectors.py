@@ -28,7 +28,6 @@ def list_souls(
     is_desc: bool = True
 ):
     """List souls with optional filters."""
-    print(sort_by, type(sort_by))
     if sort_by is None:
         sort_by = 'uploaded_at'
     if isinstance(sort_by, Enum):

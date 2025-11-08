@@ -1,14 +1,18 @@
 from functools import wraps
 from django.http import JsonResponse
 
+from base.utils.exceptions import CustomValidationError
 
-def require_permission(permission_tag):
+
+def require_permission(permission_tag, restricted_roles=None, restriction_handler=None):
     """
     Decorator to check permissions based on user role.
     Missioners automatically get access only to their own resources.
 
     Args:
         permission_tag: The permission required (e.g., "users:read")
+        restricted_roles: The roles that have restrictions (e.g., ['missioner'])
+        restriction_handler: The logic to handle restrictions for certain roles
     """
 
     def decorator(func):
@@ -35,35 +39,31 @@ def require_permission(permission_tag):
 
             # Helper function to check role type
             def has_role_type(role_type):
-                return any(role_type in role_name for role_name in role_names)
+                return any(role_type.lower() in role_name.lower() for role_name in role_names)
 
-            requested_user_id = kwargs.get('user_id')
             has_permission = permission_tag in user_permissions
 
-            # Priority 1: Superuser/Admin - bypass all checks
             if user.is_superuser or has_role_type('superuser') or has_role_type('admin'):
                 return func(request, *args, **kwargs)
 
-            # Priority 2: Missioner - automatic self-access only
-            if has_role_type('missioner'):
-                if not has_permission:
-                    return JsonResponse({"detail": "Permission denied"}, status=403)
+            if not has_permission:
+                return JsonResponse({"detail": "Permission denied"}, status=403)
 
-                # Missioners can only access their own resources
-                if requested_user_id and requested_user_id != user.id:
-                    return JsonResponse(
-                        {"detail": "You can only access your own details"},
-                        status=403
-                    )
-
+            if not restricted_roles:
                 return func(request, *args, **kwargs)
 
-            # Priority 3: Other roles - check permission only
-            if has_permission:
-                return func(request, *args, **kwargs)
+            for restricted_role in restricted_roles:
+                if not has_role_type(restricted_role):
+                    continue
+                if restriction_handler:
+                    try:
+                        restriction_handler(user, kwargs)
+                    except CustomValidationError as e:
+                        return JsonResponse({"detail": str(e)}, status=403)
+                    except Exception as e:
+                        return JsonResponse({"detail": f"Restriction error: {e}"}, status=400)
 
-            # No access granted
-            return JsonResponse({"detail": "Permission denied"}, status=403)
+            return func(request, *args, **kwargs)
 
         return wrapper
 
