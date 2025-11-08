@@ -7,6 +7,7 @@ from base.api import paginate_response
 from base.schemas import DetailOut
 from users import selectors, services, schemas
 from users.decorators import require_permission
+from users.services import missioner_restriction_handler
 
 router = Router(
     tags=["users"],
@@ -120,7 +121,11 @@ def create_role_api(request, role_in: schemas.RoleCreate):
     response={200: auth_schemas.UserData, 400: DetailOut},
     auth=jwt_auth
 )
-@require_permission("view_user")
+@require_permission(
+    "view_user",
+    restricted_roles=["missioner_template"],
+    restriction_handler=missioner_restriction_handler
+)
 def get_user_api(request, user_id: int):
     user = selectors.user_details(user_id=user_id)
     return auth_schemas.UserData(**user.to_dict(request))

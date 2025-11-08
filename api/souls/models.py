@@ -1,4 +1,7 @@
+from typing import Optional
+
 from django.db import models
+from django.http import HttpRequest
 from phonenumber_field.modelfields import PhoneNumberField
 
 from base.models import BaseModel
@@ -34,7 +37,7 @@ class Soul(BaseModel):
     def __str__(self):
         return self.get_full_name()
 
-    def to_dict(self, request: models.Model = None):
+    def to_dict(self, request: Optional[HttpRequest] = None):
         data = super().to_dict()
         data.update({
             "location_id": self.location.id if self.location else None,
@@ -45,6 +48,24 @@ class Soul(BaseModel):
             "user_full_name": str(self.user.get_full_name()) if self.user else None,
             "soul_full_name": self.get_full_name()
         })
+        return data
+
+    def to_dict_details(self, request: Optional[HttpRequest] = None):
+        data = self.to_dict(request)
+        # get first and last progress update
+        progress_updates = self.progress_updates.all().order_by('-update_date', '-created_at')
+        if not progress_updates.exists():
+            data['latest_progress_update'] = None
+            data['initial_progress_update'] = None
+        elif progress_updates.count() == 1:
+            progress_update = progress_updates.first()
+            data['latest_progress_update'] = progress_update.to_dict(request)
+            data['initial_progress_update'] = progress_update.to_dict(request)
+        else:
+            first_progress_update = progress_updates.first()
+            last_progress_update = progress_updates.last()
+            data['latest_progress_update'] = first_progress_update.to_dict(request)
+            data['initial_progress_update'] = last_progress_update.to_dict(request)
         return data
 
 

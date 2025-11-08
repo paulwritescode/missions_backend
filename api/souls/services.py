@@ -207,3 +207,32 @@ def upload_souls(file, mission_id: int, location_id: int):
         raise e
     except Exception as e:
         raise CustomValidationError("Error uploading souls: {}".format(e))
+
+
+
+def progress_update_handler(user, kwargs):
+    print("SOUL ID KWARGS:", kwargs)
+    print("USER ID:", user.pk)
+    soul_id = kwargs.get("progress_update_in").soul_id if "progress_update_in" in kwargs else kwargs.get("soul_id")
+    if not soul_id:
+        return None
+    soul = get_soul(soul_id)
+    if not soul.user or soul.user.pk != user.pk:
+        raise CustomValidationError("You can only view/write/edit/delete notes for souls assigned to you.")
+    return None
+
+
+def missioner_soul_operations_handler(user, kwargs):
+    """
+    Restriction handler for missioners updating souls.
+    Ensures missioners can only update souls associated to them.
+    """
+    print("KWARGS", kwargs)
+    soul_id = kwargs.get('soul_id')
+    if not soul_id:
+        raise CustomValidationError("Soul ID is required.")
+
+    soul = get_soul(soul_id=soul_id)
+
+    if not soul.user or soul.user.pk != user.id:
+        raise CustomValidationError("You can only view/update souls assigned to you.")

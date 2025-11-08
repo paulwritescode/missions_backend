@@ -101,7 +101,8 @@ MISSIONER_PERMISSIONS = {
     "view_missioner_stats",
     "sign_up",
     "view_jia_participant",
-    "soul_stats"
+    "soul_stats",
+    "delete_progress_update",
 }
 
 STAFF_PERMISSIONS = MISSIONER_PERMISSIONS | {
@@ -143,7 +144,6 @@ ADMIN_PERMISSIONS = STAFF_PERMISSIONS | {
     "delete_role",
     "view_auditlog",
     "delete_soul",
-    "delete_progress_update",
     "delete_mission",
     "delete_mission_category",
     "delete_location",

@@ -8,6 +8,7 @@ from base.schemas import DetailOut
 from souls import selectors, services, schemas
 from authentication.permissions import jwt_auth
 from base.api import paginate_response
+from souls.services import progress_update_handler, missioner_soul_operations_handler
 from users.decorators import require_permission
 
 router = Router(
@@ -24,11 +25,11 @@ router = Router(
 def souls_list_api(request, params: schemas.SoulsQuery = Query(...)):
     """API endpoint to list souls with optional filters and pagination."""
     souls = selectors.list_souls(
+        user=request.user,
         filters=params.dict(),
         sort_by=params.sort_by,
         is_desc=params.is_desc
     )
-    print(souls)
     response = paginate_response(
         queryset=souls,
         request=request,
@@ -42,12 +43,13 @@ def souls_list_api(request, params: schemas.SoulsQuery = Query(...)):
 @require_permission("souls_stats")
 @router.get(
     "/stats/",
-    response={200: str, 400: DetailOut},
+    response={200: dict, 400: DetailOut},
     auth=jwt_auth
 )
 def souls_stats_api(request, params: schemas.SoulsQuery = Query(...)):
     """API endpoint to list souls with optional filters and pagination."""
     souls_count = selectors.souls_stats(
+        user=request.user,
         filters=params.dict()
     )
     return 200, souls_count
@@ -136,7 +138,11 @@ def progress_updates_list_api(request, params: schemas.ProgressUpdateQuery = Que
     return JsonResponse(response, safe=False)
 
 
-@require_permission("create_progress_update")
+@require_permission(
+    "create_progress_update",
+    restricted_roles=["missioner_template"],
+    restriction_handler=progress_update_handler
+)
 @router.post(
     "progress_updates/create/",
     response={201: schemas.ProgressUpdateOut},
@@ -148,7 +154,11 @@ def create_progress_update_api(request, progress_update_in: schemas.ProgressUpda
     return 201, schemas.ProgressUpdateOut(**progress_update.to_dict(request))
 
 
-@require_permission("view_progress_update")
+@require_permission(
+    "view_progress_update",
+    restricted_roles=["missioner_template"],
+    restriction_handler=progress_update_handler
+)
 @router.get(
     "progress_updates/{progress_update_id}/",
     response={200: schemas.ProgressUpdateOut},
@@ -160,7 +170,11 @@ def progress_update_details_api(request, progress_update_id: int):
     return schemas.ProgressUpdateOut(**progress_update.to_dict(request))
 
 
-@require_permission("update_progress_update")
+@require_permission(
+    "update_progress_update",
+    restricted_roles=["missioner_template"],
+    restriction_handler=progress_update_handler
+)
 @router.patch(
     "progress_updates/{progress_update_id}/update/",
     response={200: schemas.ProgressUpdateOut},
@@ -175,7 +189,11 @@ def update_progress_update_api(request, progress_update_id: int, progress_update
     return schemas.ProgressUpdateOut(**progress_update.to_dict(request))
 
 
-@require_permission("delete_progress_update")
+@require_permission(
+    "delete_progress_update",
+    restricted_roles=["missioner_template"],
+    restriction_handler=progress_update_handler
+)
 @router.delete(
     "progress_updates/{progress_update_id}/delete/",
     response={200: schemas.ProgressUpdateOut},
@@ -187,13 +205,18 @@ def delete_progress_update_api(request, progress_update_id: int):
     return schemas.ProgressUpdateOut(**progress_update.to_dict(request))
 
 
-@require_permission("view_soul")
+@require_permission(
+    "view_soul",
+    restricted_roles=["missioner_template"],
+    restriction_handler=missioner_soul_operations_handler
+)
+
 @router.get(
     "/{soul_id}/",
-    response={200: schemas.SoulOut},
+    response={200: schemas.SoulDetailsOut},
     auth=jwt_auth
 )
 def soul_details_api(request, soul_id: int):
     """API endpoint to retrieve details of a specific soul by ID."""
     soul = selectors.get_soul(soul_id=soul_id)
-    return schemas.SoulOut(**soul.to_dict(request))
+    return schemas.SoulDetailsOut(**soul.to_dict_details(request))

@@ -72,6 +72,11 @@ class SoulUpdate(Schema):
     user: Optional[int] = None
     description: Optional[str] = None
 
+class ProgressUpdateSummary(BaseOut):
+    """Schema for progress update output."""
+    content: str
+    update_date: datetime.date
+
 
 class SoulUploadIn(Schema):
     mission_id: int
@@ -97,6 +102,11 @@ class SoulOut(BaseOut):
     soul_full_name: str
     description: Optional[str] = None
 
+
+class SoulDetailsOut(SoulOut):
+    """Schema for detailed soul output."""
+    latest_progress_update: Optional[ProgressUpdateSummary] = None
+    initial_progress_update: Optional[ProgressUpdateSummary] = None
 
 
 class ProgressUpdateCreate(Schema):
