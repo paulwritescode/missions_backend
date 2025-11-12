@@ -129,8 +129,6 @@ def create_mission(
     start_date: datetime.date,
     end_date: datetime.date,
     partnering_organization: Optional[list[Dict]] = None,
-    is_individual: bool = False,
-    created_by_id: Optional[int] = None
 ) -> Mission:
     """
     Create a new mission.
@@ -142,7 +140,7 @@ def create_mission(
         start_date: Start date of the mission.
         end_date: End date of the mission.
         partnering_organization: List of partnering organizations.
-        is_individual: Is this an individual mission?
+        created_by_id: Is this an individual mission?
 
     Returns:
         Created Mission instance.
@@ -150,11 +148,7 @@ def create_mission(
 
     if start_date >= end_date:
         raise CustomValidationError("Start date must be before end date.")
-    if is_individual and not created_by_id:
-        raise CustomValidationError("created_by_id is required for individual missions.")
-    created_by = None
-    if created_by_id:
-        created_by = user_details(user_id=created_by_id)
+
     category = mission_category_details(category_id)
     location = location_details(location_id)
     mission, _ = Mission.objects.get_or_create(
@@ -164,9 +158,7 @@ def create_mission(
         location=location,
         start_date=start_date,
         end_date=end_date,
-        partnering_organization=partnering_organization or [],
-        is_individual=is_individual,
-        created_by=created_by
+        partnering_organization=partnering_organization or []
     )
     return mission
 

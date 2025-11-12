@@ -32,7 +32,6 @@ class MissionsCategoryFilterSchema(BaseQuery):
 class MissionsFilterSchema(BaseQuery):
     category_id: int | None = None
     location_id: int | None = None
-    is_individual: bool | None = None
     status: MissionStatus | None = None
     start_date_before: str | None = None
     start_date_after: str | None = None
@@ -107,7 +106,6 @@ class MissionCreateSchema(Schema):
     start_date: datetime.date
     end_date: datetime.date
     partnering_organization: list[str] | None = []
-    is_individual: bool | None = False
 
 
 class MissionUpdateSchema(Schema):
@@ -117,19 +115,15 @@ class MissionUpdateSchema(Schema):
     category_name: str | None = None
     location_id: int | None = None
     location_name: str | None = None
-    created_by_id: int | None = None
-    created_by_name: str | None = None
     start_date: str | None = None
     end_date: str | None = None
     status: MissionStatus | None = None
     partnering_organization: list[str] | None = None
-    is_individual: bool | None = None
 
 
 class MissionFilterSchema(BaseQuery):
     category_id: int | None = None
     location_id: int | None = None
-    is_individual: bool | None = None
     status: MissionStatus | None = None
     start_date_before: str | None = None
     start_date_after: str | None = None
@@ -149,9 +143,6 @@ class MissionOutSchema(BaseOut):
     end_date: str
     status: MissionStatus
     partnering_organization: list[str]
-    is_individual: bool
-    created_by_id: int | None = None
-    created_by_name: str | None = None
 
 
 class AttendanceDay(Schema):
