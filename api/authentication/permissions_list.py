@@ -34,6 +34,7 @@ ALL_PERMISSIONS = {
     "view_soul",
     "update_soul",
     "delete_soul",
+    "upload_souls",
     "create_miracle",
     "list_miracles",
     "view_miracle",
@@ -58,6 +59,7 @@ ALL_PERMISSIONS = {
     "list_auditlogs",
     "view_missioner_stats",
     "view_admin_stats",
+    "soul_stats",
     "list_permissions",
     "create_jia_participant",
     "view_jia_participant",
@@ -93,12 +95,14 @@ MISSIONER_PERMISSIONS = {
     "view_photo_gallery",
     "list_photo_galleries",
     "create_progress_update",
-    "list_progress_updates",  # TODO: Specific to own progress updates only
+    "list_progress_updates",
     "update_progress_update",
     "view_progress_update",
     "view_missioner_stats",
     "sign_up",
     "view_jia_participant",
+    "soul_stats",
+    "delete_progress_update",
 }
 
 STAFF_PERMISSIONS = MISSIONER_PERMISSIONS | {
@@ -125,6 +129,7 @@ STAFF_PERMISSIONS = MISSIONER_PERMISSIONS | {
     "view_jia_participant",
     "list_jia_participants",
     "delete_jia_participant",
+    "upload_souls",
 }
 
 ADMIN_PERMISSIONS = STAFF_PERMISSIONS | {
@@ -139,7 +144,6 @@ ADMIN_PERMISSIONS = STAFF_PERMISSIONS | {
     "delete_role",
     "view_auditlog",
     "delete_soul",
-    "delete_progress_update",
     "delete_mission",
     "delete_mission_category",
     "delete_location",

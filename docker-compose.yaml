@@ -6,6 +6,11 @@ services:
       - .env
     ports:
       - "9050:8000"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       db:
         condition: service_healthy
@@ -28,6 +33,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  nginx:
+    image: nginx:latest
+    container_name: missions_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/static
+      - ./media:/media
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:

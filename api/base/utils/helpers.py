@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Union, Optional, Any, Type, Callable
 
 from django.db import models
+from django.utils import timezone
 
 from base.utils.exceptions import CustomValidationError
 
@@ -35,10 +36,12 @@ def apply_sorting(
         allowed_fields = ["created_at"]
 
     # Fallback to created_at if not allowed
+    print(sort_by, allowed_fields)
     if sort_by not in allowed_fields:
         sort_by = "created_at"
 
     prefix = "-" if is_desc else ""
+    print(prefix + sort_by)
     return qs.order_by(f"{prefix}{sort_by}")
 
 
@@ -96,3 +99,28 @@ def serialize_types(
             return serializer(data)
 
     return data
+
+
+def validate_date(value, row):
+    """
+    Validate and normalize a date value.
+    Returns a Python date object if valid, otherwise raises an error.
+    """
+    if not value:
+        return None
+
+    # Already a datetime object (Excel files often do this)
+    if isinstance(value, datetime.datetime):
+        return value.date()
+
+    # Try to parse string values in common formats
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
+        try:
+            parsed = datetime.datetime.strptime(str(value).strip(), fmt)
+            return parsed.date()
+        except ValueError:
+            continue
+
+    raise CustomValidationError(
+        "Invalid date format '{}' in row {}. Expected formats: YYYY-MM-DD, DD/MM/YYYY, or MM/DD/YYYY.".format(value, row)
+    )

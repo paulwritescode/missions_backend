@@ -23,7 +23,7 @@ class RoleSchema(BaseOut):
     permissions: list[str]
 
 
-class UserFilterSchema(Schema):
+class UserFilterSchema(BaseQuery):
     search: Optional[str] = None
     roles: Optional[List[str]] = None
     is_active: Optional[bool] = None
@@ -34,6 +34,8 @@ class UserCreate(Schema):
     first_name: str | None = None
     last_name: str | None = None
     password: str
+    profile_photo: str | None = None
+    preferred_username: str | None = None
     role_id: int | None = None
     permissions: list[str] | None = None
     role_name: str | None = None

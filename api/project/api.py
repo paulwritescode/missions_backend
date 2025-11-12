@@ -1,19 +1,28 @@
 from typing import Union
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from ninja import NinjaAPI
 from pydantic import ValidationError
 
 from authentication.api import router as auth_router
 from users.api import router as users_router
 from missions.api import router as missions_router
+from souls.api import router as souls_router
+from testimonies.api import router as testimonies_router
+
 
 api = NinjaAPI()
 
 
-api.add_router("/users/", users_router)
+@api.get("/health/")
+def health_check(request: HttpRequest):
+    return JsonResponse({"status": "ok"})
+
 api.add_router("/auth/", auth_router)
+api.add_router("/users/", users_router)
 api.add_router("/missions/", missions_router)
+api.add_router("/souls/", souls_router)
+api.add_router("/testimonies/", testimonies_router)
 
 
 @api.exception_handler(ValidationError)

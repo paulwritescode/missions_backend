@@ -23,7 +23,6 @@ router = Router(
 )
 @require_permission("list_locations")
 def locations_list_api(request, filters: schemas.LocationsFilterSchema = Query(...)):
-    from missions import selectors
     locations = selectors.locations_list(filters=filters.dict() if filters else None)
 
     response = paginate_response(
@@ -220,8 +219,11 @@ def mission_jia_participants_list_api(
 ):
     participants = selectors.mission_jia_participants_list(
         mission_id=mission_id,
-        filters=params.dict()
+        filters=params.dict(),
+        sort_by=params.sort_by,
+        is_desc=params.is_desc
     )
+
     response = paginate_response(
         queryset=participants,
         request=request,
@@ -293,7 +295,11 @@ def mission_reports_list_api(
         request,
         filters: schemas.ReportsFilterSchema = Query(...)
 ):
-    reports = selectors.reports_list(filters=filters.dict() if filters else None)
+    reports = selectors.reports_list(
+        filters=filters.dict() if filters else None,
+        sort_by=filters.sort_by,
+        is_desc=filters.is_desc
+    )
     response = paginate_response(
         queryset=reports,
         request=request,

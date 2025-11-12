@@ -34,3 +34,11 @@ class JWTCustomAuth(HttpBearer):
 
 
 jwt_auth = JWTCustomAuth()
+
+def has_role_type(role_type: str, roles=None, user=None) -> bool:
+    if roles is None and user is None:
+        return False
+    if roles is None and user is not None:
+        roles = user.roles.values_list('name', flat=True)
+    role_names = list(roles)
+    return any(role_type.lower() in role_name.lower() for role_name in role_names)

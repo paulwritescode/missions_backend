@@ -1,8 +1,12 @@
 from typing import Optional, List
 
-from base.utils.exceptions import CustomValidationError
+from django.core.exceptions import ValidationError
+
+from authentication.permissions import has_role_type
+from base.utils.exceptions import CustomValidationError, handle_cleaning_error
 from authentication import permissions_list
 from users.models import User, Role
+from users.schemas import UserType
 from users.selectors import role_details, user_details
 
 
@@ -11,10 +15,12 @@ def create_user(
     password: str = None,
     first_name: str = '',
     last_name: str = '',
-    user_type: Optional[str] = None,
+    preferred_username: str = None,
+    profile_photo: Optional[str] = None,
+    user_type: Optional[UserType] = None,
     role_id: Optional[int] = None,
     permissions: Optional[list] = None,
-    role_name: Optional[str] = None,
+    role_name: Optional[str] = None
 ) -> User:
     """
     Create a new user with the given details.
@@ -24,6 +30,8 @@ def create_user(
         password: User's password (optional)
         first_name: User's first name (optional)
         last_name: User's last name (optional)
+        preferred_username: User's preferred username (optional)
+        profile_photo: User's profile photo (optional)
         user_type: Type of the user to assign a template role (e.g., 'admin', 'missioner') (optional)
         role_id: ID of an existing role to assign to the user (optional)
         permissions: List of permissions to create a new role with (optional)
@@ -34,38 +42,79 @@ def create_user(
         ValueError: If email is not provided
         CustomValidationError: If neither permissions nor role_id is provided
     """
-    if not email:
-        raise ValueError("Email is required to create a user")
+    try:
+        email = email.lower()
+        with transaction.atomic():
+            user = User(
+                email=email,
+                username=email,
+                first_name=first_name,
+                last_name=last_name,
+                preferred_username=preferred_username,
+                profile_photo=profile_photo
+            )
 
-    email = email.lower()
-    user = User(email=email, first_name=first_name, last_name=last_name)
+            if password:
+                user.set_password(password)
+            else:
+                user.set_unusable_password()
+            user.full_clean()
+            user.save()
 
-    if password:
-        user.set_password(password)
-    else:
-        user.set_unusable_password()
+            if user_type:
+                template_role = get_or_create_template_role(user_type.value)
+                user.roles.add(template_role)
+                return user
 
-    user.save()
+            if not permissions and not role_id:
+                raise CustomValidationError("Either permissions or role_id must be provided")
+            if role_id:
+                role = role_details(role_id=role_id)
+            else:
+                if not role_name:
+                    raise CustomValidationError("role_name must be provided when creating a role with permissions")
+                role = create_role(name=role_name, permissions=permissions or [])
+            if role:
+                user.roles.add(role)
+            return user
+    except IntegrityError:
+        raise CustomValidationError("There exists a user with the provided details")
+    except ValidationError as e:
+        error_message = handle_cleaning_error(e)
+        raise CustomValidationError(error_message)
+    except Exception as e:
+        raise CustomValidationError("An unexpected error occurred: {}".format(e))
 
-    if user_type:
-        template_role = get_or_create_template_role(user_type)
-        user.roles.add(template_role)
-        return user
+def register_missioner(
+    email: str,
+    first_name: str,
+    last_name: str,
+    password: str,
+    confirm_password: str,
+    preferred_username: Optional[str] = None,
+    profile_photo: Optional[str] = None
+):
+    if password != confirm_password:
+        raise CustomValidationError("Passwords did not match")
 
-    if not permissions and not role_id:
-        raise CustomValidationError("Either permissions or role_id must be provided")
-    if role_id:
-        role = role_details(role_id=role_id)
-    else:
-        if not role_name:
-            raise CustomValidationError("role_name must be provided when creating a role with permissions")
-        role = create_role(name=role_name, permissions=permissions or [])
-    if role:
-        user.roles.add(role)
+    if preferred_username is None:
+        preferred_username = first_name
+
+    user = create_user(
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        preferred_username=preferred_username,
+        password=password,
+        profile_photo=profile_photo,
+        user_type=UserType.MISSIONER
+    )
+
     return user
 
 
-from django.db import transaction
+from django.db import transaction, IntegrityError
+
 
 def create_role(name: str, permissions: list, description: str = '') -> Role:
     if not name:
@@ -142,3 +191,16 @@ def activate_user(user_id: int) -> User:
     user.is_active = True
     user.save()
     return user
+
+
+def missioner_restriction_handler(user, kwargs):
+    """
+    Restriction handler for missioner role.
+    Ensures missioners can only access their own resources.
+    """
+    print("user in restriction handler:", user)
+    requested_user_id = kwargs.get('user_id')
+
+    # Missioners can only access their own data
+    if requested_user_id and requested_user_id != user.id:
+        raise CustomValidationError("You can only access your own details.")

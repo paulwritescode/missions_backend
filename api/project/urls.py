@@ -28,11 +28,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
 
-from .api import api
+from .api import api, health_check
 
 if settings.ALLOW_ADMIN_SITE:
     urlpatterns = [path(settings.ADMIN_URL, admin.site.urls)]
 
 urlpatterns += [
     path("api/", api.urls),
+    path("health/", health_check),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
