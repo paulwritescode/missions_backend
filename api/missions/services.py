@@ -163,8 +163,8 @@ def create_mission(
         Created Mission instance.
     """
 
-    if start_date >= end_date:
-        raise CustomValidationError("Start date must be before end date.")
+    if start_date > end_date:
+        raise CustomValidationError("Start date cannot be after end date.")
     today = timezone.now().date()
 
     if registration_close_date and registration_close_date < today:
@@ -198,14 +198,14 @@ def update_mission(update_dict: Dict[str, Any], mission_id: int) -> Mission:
     """
     mission = mission_details(mission_id)
     if 'start_date' in update_dict and 'end_date' in update_dict:
-        if update_dict['start_date'] >= update_dict['end_date']:
-            raise CustomValidationError("Start date must be before end date.")
+        if update_dict['start_date'] > update_dict['end_date']:
+            raise CustomValidationError("Start date cannot be after end date.")
     elif 'start_date' in update_dict:
-        if update_dict['start_date'] >= mission.end_date:
-            raise CustomValidationError("Start date must be before end date.")
+        if update_dict['start_date'] > mission.end_date:
+            raise CustomValidationError("Start date cannot be after end date.")
     elif 'end_date' in update_dict:
         if mission.start_date >= update_dict['end_date']:
-            raise CustomValidationError("Start date must be before end date.")
+            raise CustomValidationError("Start date cannot be after end date.")
 
     if 'category_id' in update_dict:
         category = mission_category_details(update_dict.pop('category_id'))
