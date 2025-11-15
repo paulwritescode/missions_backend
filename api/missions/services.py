@@ -1,12 +1,16 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Dict, Any, Optional, List
 
 from django.db import IntegrityError
+from django.utils import timezone
 
 from base.utils.exceptions import CustomValidationError
 from base.utils.helpers import serialize_types
+from missions.constants import EventType
 from missions.models import MissionCategory, Mission, MissionJIAParticipant, Report, MissionGallery, Location
-from missions.selectors import mission_category_details, location_details, mission_details
+from missions.selectors import mission_category_details, location_details, mission_details, \
+    mission_participant_details, report_details
 from users.selectors import user_details
 
 
@@ -79,17 +83,21 @@ def delete_location(location_id: int) -> Location:
     return location
 
 
-def create_missions_category(name: str, description: str = "") -> MissionCategory:
+def create_missions_category(name: str, description: str = "", event_type: Optional[EventType] = None) -> MissionCategory:
     """
     Create a mission category if it doesn't exist.
 
     Args:
         name: Name of the category.
         description: Description of the category.
+        event_type: Event type of the category.
     """
     category, created = MissionCategory.objects.get_or_create(
         name=name,
-        defaults={"description": description}
+        defaults={
+            "description": description,
+            "event_type": event_type.value
+        }
     )
     return category
 
@@ -104,6 +112,8 @@ def update_missions_category(update_dict: Dict[str, Any], category_id: int) -> M
     """
     category = mission_category_details(category_id)
     for key, value in update_dict.items():
+        if key == 'event_type' and value is not None:
+            value = value.value
         setattr(category, key, value)
     category.save()
     return category
@@ -129,6 +139,10 @@ def create_mission(
     start_date: datetime.date,
     end_date: datetime.date,
     partnering_organization: Optional[list[Dict]] = None,
+    registration_close_date: Optional[datetime.date] = None,
+    registration_fee_required: Optional[bool] = None,
+    registration_fee: Optional[Decimal] = None,
+    couple_registration_fee: Optional[Decimal] = None
 ) -> Mission:
     """
     Create a new mission.
@@ -140,7 +154,10 @@ def create_mission(
         start_date: Start date of the mission.
         end_date: End date of the mission.
         partnering_organization: List of partnering organizations.
-        created_by_id: Is this an individual mission?
+        registration_fee_required: Is registration fee required for the mission.
+        registration_close_date: Registration close date for the mission.
+        registration_fee: Registration fee for the mission.
+        couple_registration_fee: Couple registration fee for the mission.
 
     Returns:
         Created Mission instance.
@@ -148,6 +165,10 @@ def create_mission(
 
     if start_date >= end_date:
         raise CustomValidationError("Start date must be before end date.")
+    today = timezone.now().date()
+
+    if registration_close_date and registration_close_date < today:
+        raise CustomValidationError("Registration close date cannot be in the past.")
 
     category = mission_category_details(category_id)
     location = location_details(location_id)
@@ -158,7 +179,11 @@ def create_mission(
         location=location,
         start_date=start_date,
         end_date=end_date,
-        partnering_organization=partnering_organization or []
+        partnering_organization=partnering_organization or [],
+        registration_close_date=registration_close_date,
+        registration_fee_required=registration_fee_required,
+        registration_fee=registration_fee,
+        couple_registration_fee=couple_registration_fee
     )
     return mission
 
@@ -171,7 +196,7 @@ def update_mission(update_dict: Dict[str, Any], mission_id: int) -> Mission:
         update_dict: Dictionary of fields to update.
         mission_id: ID of the mission to update.
     """
-    mission = Mission.objects.get(id=mission_id)
+    mission = mission_details(mission_id)
     if 'start_date' in update_dict and 'end_date' in update_dict:
         if update_dict['start_date'] >= update_dict['end_date']:
             raise CustomValidationError("Start date must be before end date.")
@@ -203,13 +228,14 @@ def delete_mission(mission_id: int) -> Mission:
     Args:
         mission_id: ID of the mission to delete.
     """
-    mission = Mission.objects.get(id=mission_id)
-    mission.delete()
+    mission = mission_details(mission_id)
+    mission.is_archived = True
+    mission.save()
     return mission
 
 
 
-def create_mission_jia_participant(
+def create_mission_participant(
     mission_id: int,
     travelling_from: str,
     days_of_attendance: list[dict[str, Any]],
@@ -219,6 +245,8 @@ def create_mission_jia_participant(
     diet_advisory: str | None = None,
     need_facilitation: bool = False,
     user_id: int | None = None,
+    coming_as_couple: bool | None = False,
+    partner_name: str | None = ""
 ):
     if not full_name and not user_id:
         raise CustomValidationError("Either full name or user id must be provided.")
@@ -228,9 +256,15 @@ def create_mission_jia_participant(
     if not phone_number and (not user or not user.phone_number):
         raise CustomValidationError("Phone number is a required field")
 
-    mission = mission_details(mission_id=mission_id)
+    if coming_as_couple and not partner_name:
+        raise CustomValidationError("Partner name is required when coming as a couple.")
 
-    # 🔧 Normalize to date objects (avoid timezone shifts)
+    mission = mission_details(mission_id=mission_id)
+    today = timezone.now().date()
+
+    if mission.registration_close_date and mission.registration_close_date < today:
+        raise CustomValidationError("Registration for this mission is closed.")
+
     mission_start = mission.start_date
     mission_end = mission.end_date
     print(mission_start, mission_end)
@@ -275,6 +309,8 @@ def create_mission_jia_participant(
             days_of_attendance=sorted(days_of_attendance, key=lambda x: x["day"]),
             need_facilitation=need_facilitation,
             gender=gender,
+            coming_as_couple=coming_as_couple,
+            partner_name=partner_name
         )
     except IntegrityError as e:
         if 'unique constraint' in str(e).lower():
@@ -286,36 +322,37 @@ def create_mission_jia_participant(
     return participant
 
 
-def update_mission_jia_participant(update_dict: Dict[str, Any], participant_id: int) -> MissionJIAParticipant:
+def update_mission_participant(update_dict: Dict[str, Any], participant_id: int) -> MissionJIAParticipant:
     """
-    Update a mission JIA participant.
+    Update a mission participant.
 
     Args:
         update_dict: Dictionary of fields to update.
         participant_id: ID of the participant to update.
     """
-    participant = MissionJIAParticipant.objects.get(id=participant_id)
+    participant = mission_participant_details(participant_id)
     for key, value in update_dict.items():
         setattr(participant, key, value)
     participant.save()
     return participant
 
 
-def delete_mission_jia_participant(participant_id: int) -> MissionJIAParticipant:
+def delete_mission_participant(participant_id: int) -> MissionJIAParticipant:
     """
-    Delete a mission JIA participant.
+    Delete a mission participant.
 
     Args:
         participant_id: ID of the participant to delete.
     """
-    participant = MissionJIAParticipant.objects.get(id=participant_id)
-    participant.delete()
+    participant = mission_participant_details(participant_id)
+    participant.is_archived = True
+    participant.save()
     return participant
 
 
-def bulk_create_mission_jia_participants(participants_data: List[Dict[str, Any]]) -> List[MissionJIAParticipant]:
+def bulk_create_mission_participants(participants_data: List[Dict[str, Any]]) -> List[MissionJIAParticipant]:
     """
-    Bulk create mission JIA participants.
+    Bulk create mission participants.
 
     Args:
         participants_data: List of dictionaries containing participant data.
@@ -346,9 +383,9 @@ def bulk_create_mission_jia_participants(participants_data: List[Dict[str, Any]]
     return participants
 
 
-def delete_mission_jia_participants_by_mission(mission_id: int, participant_ids: List[int]) -> int:
+def delete_mission_participants_by_mission(mission_id: int, participant_ids: List[int]) -> int:
     """
-    Delete all mission JIA participants associated with a specific mission.
+    Delete all mission participants associated with a specific mission.
 
     Args:
         mission_id: ID of the mission whose participants are to be deleted.
@@ -357,9 +394,11 @@ def delete_mission_jia_participants_by_mission(mission_id: int, participant_ids:
     Returns:
         The number of participants deleted.
     """
-    participants = MissionJIAParticipant.objects.filter(mission__id=mission_id, ids__in=participant_ids)
+    participants = MissionJIAParticipant.objects.filter(mission__id=mission_id, ids__in=participant_ids, is_archived=False)
     count = participants.count()
-    participants.delete()
+    if count == 0:
+        raise CustomValidationError("No participants found for the given mission and participant IDs.")
+    participants.update(is_archived=True)
     return count
 
 
@@ -390,7 +429,7 @@ def update_report(update_dict: Dict[str, Any], report_id: int) -> Report:
         update_dict: Dictionary of fields to update.
         report_id: ID of the report to update.
     """
-    report = Report.objects.get(id=report_id)
+    report = report_details(report_id)
     if 'mission_id' in update_dict:
         mission = mission_details(update_dict.pop('mission_id'))
         report.mission = mission
@@ -408,8 +447,9 @@ def delete_report(report_id: int) -> Report:
     Args:
         report_id: ID of the report to delete.
     """
-    report = Report.objects.get(id=report_id)
-    report.delete()
+    report = report_details(report_id)
+    report.is_archived = True
+    report.save()
     return report
 
 

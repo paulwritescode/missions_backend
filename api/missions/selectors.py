@@ -4,6 +4,7 @@ from django.db import models
 
 from base.utils.exceptions import CustomValidationError
 from base.utils.helpers import apply_sorting
+from missions.constants import EventType
 from missions.filters import LocationFilter, MissionFilter, MissionJIAFilter, ReportsFilter, MissionGalleryFilter
 from missions.models import MissionCategory, Location, Mission, MissionJIAParticipant, Report, MissionGallery
 
@@ -54,12 +55,13 @@ def mission_category_details(category_id: int) -> Optional[MissionCategory]:
         raise CustomValidationError("MissionCategory with the given ID does not exist.")
 
 
-def mission_categories_list(search: Optional[str] = None) -> models.QuerySet:
+def mission_categories_list(search: Optional[str] = None, event_type: Optional[EventType] = None) -> models.QuerySet:
     """
     List mission categories with optional filters.
 
     Args:
         search: Optional dictionary.
+        event_type: Optional EventType to filter by.
 
     Returns:
         QuerySet of MissionCategory instances.
@@ -67,6 +69,8 @@ def mission_categories_list(search: Optional[str] = None) -> models.QuerySet:
     qs = MissionCategory.objects.all().order_by('name')
     if search:
         qs.filter(name__icontains=search)
+    if event_type:
+        qs = qs.filter(event_type=event_type.value)
     return qs
 
 
@@ -80,12 +84,14 @@ def mission_details(mission_id: int) -> Mission:
     Returns:
         Mission instance or None if not found.
     """
-    from missions.models import Mission
-
+    error_messsage = "Mission with the given ID does not exist."
     try:
-        return Mission.objects.get(id=mission_id)
+        mission = Mission.objects.get(id=mission_id)
+        if mission.is_archived:
+            raise CustomValidationError(error_messsage)
+        return mission
     except Mission.DoesNotExist:
-        raise CustomValidationError("Mission with the given ID does not exist.")
+        raise CustomValidationError(error_messsage)
 
 
 def missions_list(filters: Optional[Dict[str, Any]] = None) -> models.QuerySet:
@@ -98,7 +104,7 @@ def missions_list(filters: Optional[Dict[str, Any]] = None) -> models.QuerySet:
     Returns:
         QuerySet of Mission instances.
     """
-    qs = Mission.objects.all().select_related('category', 'location').order_by('-start_date')
+    qs = Mission.objects.filter(is_archived=False).select_related('category', 'location').order_by('-start_date')
     if filters:
         if 'status' in filters and filters['status'] is not None:
             filters['status'] = filters['status'].value
@@ -110,9 +116,9 @@ def missions_list(filters: Optional[Dict[str, Any]] = None) -> models.QuerySet:
     return MissionFilter(filters, qs).qs if filters else qs
 
 
-def mission_jia_participant_details(participant_id: int) -> MissionJIAParticipant:
+def mission_participant_details(participant_id: int) -> MissionJIAParticipant:
     """
-    Get details of a mission JIA participant by ID.
+    Get details of a mission participant by ID.
 
     Args:
         participant_id: ID of the participant.
@@ -120,22 +126,24 @@ def mission_jia_participant_details(participant_id: int) -> MissionJIAParticipan
     Returns:
         MissionJIAParticipant instance or None if not found.
     """
-    from missions.models import MissionJIAParticipant
-
+    error_message = "Mission participant with the given ID does not exist."
     try:
-        return MissionJIAParticipant.objects.get(id=participant_id)
+        mission = MissionJIAParticipant.objects.get(id=participant_id)
+        if mission.is_archived:
+            raise CustomValidationError(error_message)
+        return mission
     except MissionJIAParticipant.DoesNotExist:
-        raise CustomValidationError("MissionJIAParticipant with the given ID does not exist.")
+        raise CustomValidationError(error_message)
 
 
-def mission_jia_participants_list(
+def mission_participants_list(
     mission_id: int,
     filters: Optional[Dict[str, Any]] = None,
     sort_by: str = 'created_at',
     is_desc: bool = True
 ) -> models.QuerySet:
     """
-    List mission JIA participants with optional filters.
+    List mission participants with optional filters.
 
     Args:
         mission_id: ID of the mission to filter by.
@@ -173,10 +181,14 @@ def report_details(report_id: int) -> Report:
     Returns:
         Report instance or None if not found.
     """
+    error_message = "Report with the given ID does not exist."
     try:
-        return Report.objects.get(id=report_id)
+        report = Report.objects.get(id=report_id)
+        if report.is_archived:
+            raise CustomValidationError(error_message)
+        return report
     except Report.DoesNotExist:
-        raise CustomValidationError("Report with the given ID does not exist.")
+        raise CustomValidationError(error_message)
 
 
 def reports_list(
@@ -195,7 +207,7 @@ def reports_list(
     Returns:
         QuerySet of Report instances.
     """
-    qs = Report.objects.all().select_related('mission', 'created_by')
+    qs = Report.objects.filter(is_archived=True).select_related('mission', 'created_by')
     qs = apply_sorting(
         qs,
         sort_by=sort_by,

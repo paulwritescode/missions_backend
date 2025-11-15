@@ -86,7 +86,7 @@ def delete_location_api(request, location_id: int):
 )
 @require_permission("list_mission_categories")
 def mission_categories_list_api(request, filters: schemas.MissionCategoryFilterSchema = Query(...)):
-    categories = selectors.mission_categories_list(search=filters.search if filters else None)
+    categories = selectors.mission_categories_list(event_type=filters.event_type, search=filters.search)
     response = paginate_response(
         queryset=categories,
         request=request,
@@ -208,16 +208,16 @@ def delete_mission_api(request, mission_id: int):
 
 @router.get(
     "/{mission_id}/participants/",
-    response={200: List[schemas.MissionJIAOutSchema], 400: DetailOut},
+    response={200: List[schemas.MissionParticipantOutSchema], 400: DetailOut},
     auth=jwt_auth
 )
 @require_permission("list_jia_participants")
-def mission_jia_participants_list_api(
+def mission_participants_list_api(
         request,
         mission_id: int,
-        params: schemas.MissionJIAFilterSchema = Query(...)
+        params: schemas.MissionParticipantsFilterSchema = Query(...)
 ):
-    participants = selectors.mission_jia_participants_list(
+    participants = selectors.mission_participants_list(
         mission_id=mission_id,
         filters=params.dict(),
         sort_by=params.sort_by,
@@ -227,7 +227,7 @@ def mission_jia_participants_list_api(
     response = paginate_response(
         queryset=participants,
         request=request,
-        schema=schemas.MissionJIAOutSchema,
+        schema=schemas.MissionParticipantOutSchema,
         page=params.page,
         page_size=params.page_size
     )
@@ -236,42 +236,42 @@ def mission_jia_participants_list_api(
 
 @router.post(
     "/participants/create/",
-    response={201: schemas.MissionJIAOutSchema, 400: DetailOut},
+    response={201: schemas.MissionParticipantOutSchema, 400: DetailOut},
     auth=jwt_auth
 )
 @require_permission("create_jia_participant")
-def create_mission_jia_participant_api(request, participant_in: schemas.MissionJIACreateSchema):
-    participant = services.create_mission_jia_participant(**participant_in.dict())
-    return 201, schemas.MissionJIAOutSchema(**participant.to_dict(request))
+def create_mission_participant_api(request, participant_in: schemas.MissionParticipantCreateSchema):
+    participant = services.create_mission_participant(**participant_in.dict())
+    return 201, schemas.MissionParticipantOutSchema(**participant.to_dict(request))
 
 
 @router.get(
     "/participants/{participant_id}/",
-    response={200: schemas.MissionJIAOutSchema, 400: DetailOut},
+    response={200: schemas.MissionParticipantOutSchema, 400: DetailOut},
     auth=jwt_auth
 )
 @require_permission("view_jia_participant")
-def mission_jia_participant_detail_api(request, participant_id: int):
-    participant = selectors.mission_jia_participant_details(participant_id=participant_id)
-    return 200, schemas.MissionJIAOutSchema(**participant.to_dict(request))
+def mission_participant_detail_api(request, participant_id: int):
+    participant = selectors.mission_participant_details(participant_id=participant_id)
+    return 200, schemas.MissionParticipantOutSchema(**participant.to_dict(request))
 
 
 @router.patch(
     "/participants/{participant_id}/update/",
-    response={200: schemas.MissionJIAOutSchema, 400: DetailOut},
+    response={200: schemas.MissionParticipantOutSchema, 400: DetailOut},
     auth=jwt_auth
 )
 @require_permission("update_jia_participant")
-def update_mission_jia_participant_api(
+def update_mission_participant_api(
         request,
         participant_id: int,
-        participant_in: schemas.MissionJIAUpdateSchema
+        participant_in: schemas.MissionParticipantUpdateSchema
 ):
-    participant = services.update_mission_jia_participant(
+    participant = services.update_mission_participant(
         participant_id=participant_id,
         update_dict=participant_in.dict(exclude_unset=True)
     )
-    return 200, schemas.MissionJIAOutSchema(**participant.to_dict(request))
+    return 200, schemas.MissionParticipantOutSchema(**participant.to_dict(request))
 
 
 @router.delete(
@@ -280,8 +280,8 @@ def update_mission_jia_participant_api(
     auth=jwt_auth
 )
 @require_permission("delete_jia_participant")
-def delete_mission_jia_participant_api(request, participant_id: int):
-    participant = services.delete_mission_jia_participant(participant_id=participant_id)
+def delete_mission_participant_api(request, participant_id: int):
+    services.delete_mission_participant(participant_id=participant_id)
     return 204, "Participant deleted successfully"
 
 

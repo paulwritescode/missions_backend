@@ -24,13 +24,16 @@ class MissionFilter(BaseFilterSet):
     end_date_before = filters.DateFilter(field_name='end_date', lookup_expr='lte')
     end_date_after = filters.DateFilter(field_name='end_date', lookup_expr='gte')
     status = filters.CharFilter(field_name="status", lookup_expr="exact")
+    registration_close_date_before = filters.DateFilter(field_name='registration_close_date', lookup_expr='lte')
+    registration_close_date_after = filters.DateFilter(field_name='registration_close_date', lookup_expr='gte')
     search_fields = ['title',]
 
     class Meta:
         model = Mission
         fields = [
-            'category_id', 'location_id', 'is_individual', 'status', 'is_individual',
-            'start_date_before', 'start_date_after', 'end_date_before', 'end_date_after'
+            'category_id', 'location_id', 'status', 'start_date_before', 'start_date_after',
+            'end_date_before', 'end_date_after', 'registration_close_date_before',
+            'registration_close_date_after', 'registration_fee_required'
         ]
 
 

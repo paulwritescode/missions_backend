@@ -15,3 +15,9 @@ class MissionStatusType(TextChoices):
     ACTIVE = "active", _("Active")
     COMPLETED = "completed", _("Completed")
     ON_HOLD = "on_hold", _("On Hold")
+
+
+class EventType(TextChoices):
+    """Event type choices"""
+    ONE_DAY = "one_day", _("One Day")
+    WEEK_LONG = "week_long", _("Week Long")

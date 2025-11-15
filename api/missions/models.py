@@ -9,7 +9,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from base.models import BaseModel
 from base.utils.exceptions import CustomValidationError
-from missions.constants import LocationCategoryType, MissionStatusType
+from missions.constants import LocationCategoryType, MissionStatusType, EventType
 from missions.schemas import AttendanceDayOut
 from users.constants import GenderType
 
@@ -67,6 +67,7 @@ class Location(BaseModel):
 class MissionCategory(BaseModel):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
+    event_type = models.CharField(max_length=100, blank=True, null=True, choices=EventType.choices)
 
     def __str__(self):
         return self.name
@@ -78,14 +79,17 @@ class MissionCategory(BaseModel):
 class Mission(BaseModel):
     title = models.CharField(max_length=200)
     description = models.TextField()
-    category = models.ForeignKey(MissionCategory, on_delete=models.CASCADE, related_name='missions')
+    category = models.ForeignKey(MissionCategory, on_delete=models.PROTECT, related_name='missions')
     location = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True, related_name='missions')
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(choices=MissionStatusType.choices, max_length=20, default=MissionStatusType.PLANNING)
     partnering_organization = models.JSONField(default=list, help_text="List of partnering organizations")
-    is_individual = models.BooleanField(default=False, help_text="Is this an individual mission?")
     created_by = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, related_name='created_missions')
+    registration_close_date = models.DateField(null=True, blank=True)
+    registration_fee_required = models.BooleanField(default=True)
+    registration_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    couple_registration_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return self.title
@@ -95,6 +99,7 @@ class Mission(BaseModel):
         data.update({
             "category_id": self.category.id if self.category else None,
             "category_name": self.category.name if self.category else None,
+            "event_type": self.category.event_type if self.category else None,
             "location_id": self.location.id if self.location else None,
             "location_name": self.location.name if self.location else None,
             "created_by_id": self.created_by.id if self.created_by else None,
@@ -110,13 +115,15 @@ class Mission(BaseModel):
 
 
 class MissionJIAParticipant(BaseModel):
-    mission = models.ForeignKey(Mission, on_delete=models.CASCADE, related_name='participants')
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT, related_name='participants')
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='jia_participations')
     full_name = models.CharField(max_length=100)
     travelling_from = models.CharField(max_length=100, help_text="City and Country")
     diet_advisory = models.TextField(blank=True, help_text="Dietary restrictions or advisories")
     days_of_attendance = models.JSONField(default=list, help_text="List of days attending and time")
     need_facilitation = models.BooleanField(default=False, help_text="Need facilitation")
+    coming_as_couple = models.BooleanField(default=False, help_text="Coming as a couple")
+    partner_name = models.CharField(max_length=100, blank=True, help_text="Partner's full name if coming as a couple")
     phone_number = PhoneNumberField()
     gender = models.CharField(choices=GenderType.choices, max_length=20)
 
@@ -144,7 +151,7 @@ class MissionJIAParticipant(BaseModel):
 
 
 class Report(BaseModel):
-    mission = models.ForeignKey(Mission, on_delete=models.CASCADE, related_name='reports')
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT, related_name='reports')
     title = models.CharField(max_length=200)
     content = models.TextField()
     report_file = models.FileField(upload_to=get_reports_dir, null=True, blank=True)
@@ -169,7 +176,7 @@ class Report(BaseModel):
 
 
 class MissionGallery(BaseModel):
-    mission = models.ForeignKey(Mission, on_delete=models.CASCADE, related_name='galleries')
+    mission = models.ForeignKey(Mission, on_delete=models.PROTECT, related_name='galleries')
     title = models.CharField(max_length=200, null=True, blank=True)
     image = models.ImageField(upload_to=get_gallery_dir)
     description = models.TextField(blank=True, null=True)

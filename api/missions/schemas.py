@@ -1,10 +1,14 @@
 import datetime
+from decimal import Decimal
 from enum import Enum
+from typing import Optional
 
 from ninja import Schema
+from pyasn1_modules.rfc3279 import ECPVer
 from pydantic import Field
 
 from base.schemas import BaseQuery, FilterQuery, BaseOut
+from missions.constants import EventType
 
 
 class MissionStatus(str, Enum):
@@ -60,7 +64,7 @@ class MissionJIASortByEnum(str, Enum):
     TRAVELLING_FROM = "travelling_from"
 
 
-class MissionJIAFilterSchema(BaseQuery, FilterQuery):
+class MissionParticipantsFilterSchema(BaseQuery, FilterQuery):
     user_id: int | None = None
     need_facilitation: bool | None = None
     gender: GenderChoices | None = None
@@ -98,20 +102,23 @@ class LocationOutSchema(BaseOut):
 class MissionCategoryCreateSchema(Schema):
     name: str
     description: str | None = None
+    event_type: EventType | None = None
 
 
 class MissionCategoryFilterSchema(BaseQuery):
     search: str | None = None
-
+    event_type: EventType | None = None
 
 class MissionCategoryUpdateSchema(Schema):
     name: str | None = None
     description: str | None = None
+    event_type: EventType | None = None
 
 
 class MissionCategoryOutSchema(BaseOut):
     name: str
     description: str
+    event_type: str | None = None
 
 
 class MissionCreateSchema(Schema):
@@ -122,6 +129,10 @@ class MissionCreateSchema(Schema):
     start_date: datetime.date
     end_date: datetime.date
     partnering_organization: list[str] | None = []
+    registration_close_date: datetime.date | None = None
+    registration_fee_required: bool | None = None
+    registration_fee: Decimal | None = None
+    couple_registration_fee: Decimal | None = None
 
 
 class MissionUpdateSchema(Schema):
@@ -135,6 +146,10 @@ class MissionUpdateSchema(Schema):
     end_date: str | None = None
     status: MissionStatus | None = None
     partnering_organization: list[str] | None = None
+    registration_close_date: datetime.date | None = None
+    registration_fee_required: bool | None = None
+    registration_fee: Decimal | None = None
+    couple_registration_fee: Decimal | None = None
 
 
 class MissionFilterSchema(BaseQuery):
@@ -146,6 +161,8 @@ class MissionFilterSchema(BaseQuery):
     end_date_before: str | None = None
     end_date_after: str | None = None
     search: str | None = None
+    registration_close_date_before: str | None = None
+    registration_close_date_after: str | None = None
 
 
 class MissionOutSchema(BaseOut):
@@ -159,6 +176,11 @@ class MissionOutSchema(BaseOut):
     end_date: str
     status: MissionStatus
     partnering_organization: list[str]
+    event_type: str | None = None
+    registration_close_date: datetime.date | None = None
+    registration_fee_required: bool | None = None
+    registration_fee: Decimal | None = None
+    couple_registration_fee: Decimal | None = None
 
 
 class AttendanceDay(Schema):
@@ -173,7 +195,7 @@ class AttendanceDayOut(Schema):
     check_in_time: str | None = None
 
 
-class MissionJIACreateSchema(Schema):
+class MissionParticipantCreateSchema(Schema):
     mission_id: int
     user_id: int | None = ""
     full_name: str | None = ""
@@ -183,9 +205,11 @@ class MissionJIACreateSchema(Schema):
     diet_advisory: str | None = ""
     need_facilitation: bool | None = False
     gender: GenderChoices
+    coming_as_couple: bool | None = False
+    partner_name: str | None = ""
 
 
-class MissionJIAUpdateSchema(Schema):
+class MissionParticipantUpdateSchema(Schema):
     mission_id: int | None = None
     user_id: int | None = None
     full_name: str | None = None
@@ -201,7 +225,7 @@ class BulkUpdateMissionJIASchema(Schema):
     need_facilitation: bool | None = None
 
 
-class MissionJIAOutSchema(BaseOut):
+class MissionParticipantOutSchema(BaseOut):
     mission_id: int | None = None
     mission_title: str | None = None
     user_id: int | None = None
