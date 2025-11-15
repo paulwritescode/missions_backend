@@ -44,8 +44,8 @@ services:
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./static:/static
-      - ./media:/media
+      - ./static:/app/api/static
+      - ./media:/app/api/media
     depends_on:
       backend:
         condition: service_healthy
