@@ -52,45 +52,6 @@ def create_testimony_api(request, testimony_in: schemas.TestimonyCreateSchema = 
 
 
 @router.get(
-    "/{testimony_id}/",
-    response={200: schemas.TestimonyOutSchema, 400: DetailOut},
-    auth=jwt_auth
-)
-@require_permission("view_testimony")
-def testimony_detail_api(request, testimony_id: int):
-    testimony = selectors.testimony_details(testimony_id=testimony_id)
-    return 200, schemas.TestimonyOutSchema(**testimony.to_dict(request))
-
-
-@router.patch(
-    "/{testimony_id}/update/",
-    response={200: schemas.TestimonyOutSchema, 400: DetailOut},
-    auth=jwt_auth
-)
-@require_permission("update_testimony")
-def update_testimony_api(request, testimony_id: int, testimony_in: schemas.TestimonyUpdateSchema = Form(...)):
-    data = testimony_in.dict(exclude_unset=True)
-    photo = request.FILES.get('photo')
-    if photo:
-        data['photo'] = photo
-    testimony = services.update_testimony(testimony_id=testimony_id, update_dict=data)
-    return 200, schemas.TestimonyOutSchema(**testimony.to_dict(request))
-
-
-@router.delete(
-    "/{testimony_id}/delete/",
-    response={204: str, 400: DetailOut},
-    auth=jwt_auth
-)
-@require_permission("delete_testimony")
-def delete_testimony_api(request, testimony_id: int):
-    services.delete_testimony(testimony_id=testimony_id)
-    return 204, "Testimony deleted successfully"
-
-
-# Miracles endpoints
-
-@router.get(
     "/miracles/",
     response={200: List[schemas.MiracleOutSchema], 400: DetailOut},
     auth=jwt_auth
@@ -158,3 +119,40 @@ def update_miracle_api(request, miracle_id: int, miracle_in: schemas.MiracleUpda
 def delete_miracle_api(request, miracle_id: int):
     services.delete_miracle(miracle_id=miracle_id)
     return 204, "Miracle deleted successfully"
+
+
+@router.get(
+    "/{testimony_id}/",
+    response={200: schemas.TestimonyOutSchema, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("view_testimony")
+def testimony_detail_api(request, testimony_id: int):
+    testimony = selectors.testimony_details(testimony_id=testimony_id)
+    return 200, schemas.TestimonyOutSchema(**testimony.to_dict(request))
+
+
+@router.patch(
+    "/{testimony_id}/update/",
+    response={200: schemas.TestimonyOutSchema, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("update_testimony")
+def update_testimony_api(request, testimony_id: int, testimony_in: schemas.TestimonyUpdateSchema = Form(...)):
+    data = testimony_in.dict(exclude_unset=True)
+    photo = request.FILES.get('photo')
+    if photo:
+        data['photo'] = photo
+    testimony = services.update_testimony(testimony_id=testimony_id, update_dict=data)
+    return 200, schemas.TestimonyOutSchema(**testimony.to_dict(request))
+
+
+@router.delete(
+    "/{testimony_id}/delete/",
+    response={204: str, 400: DetailOut},
+    auth=jwt_auth
+)
+@require_permission("delete_testimony")
+def delete_testimony_api(request, testimony_id: int):
+    services.delete_testimony(testimony_id=testimony_id)
+    return 204, "Testimony deleted successfully"
