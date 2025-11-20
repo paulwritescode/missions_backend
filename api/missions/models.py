@@ -13,6 +13,9 @@ from missions.constants import LocationCategoryType, MissionStatusType, EventTyp
 from missions.schemas import AttendanceDayOut
 from users.constants import GenderType
 
+from api.base.utils.helpers import commas
+from api.souls.constants import SoulStatus
+
 
 def get_reports_dir(instance, filename):
     """
@@ -35,6 +38,17 @@ def get_gallery_dir(instance, filename):
     timestamp = timezone.now().strftime("%Y-%m-%d_%H-%M-%S")
     # Create the path
     return os.path.join("missions", "gallery", "{}{}".format(timestamp, ext))
+
+
+def get_missions_banner_dir(instance, filename):
+    """
+    Get photo's directories.
+    """
+    f_name, ext = os.path.splitext(filename)
+    # Format timestamp to 'YYYY-MM-DD_HH-MM-SS'
+    timestamp = timezone.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # Create the path
+    return os.path.join("missions", "banners", "{}{}".format(timestamp, ext))
 
 
 class Location(BaseModel):
@@ -90,9 +104,24 @@ class Mission(BaseModel):
     registration_fee_required = models.BooleanField(default=True)
     registration_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     couple_registration_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    banner_image = models.ImageField(upload_to=get_missions_banner_dir, null=True, blank=True)
 
     def __str__(self):
         return self.title
+
+    @property
+    def is_registration_open(self) -> bool:
+        if self.registration_close_date:
+            return timezone.now().date() <= self.registration_close_date
+        return True
+
+    @property
+    def total_souls_won(self):
+        return getattr(self, "souls_won_count", 0)
+
+    @property
+    def total_souls_follow_up(self):
+        return getattr(self, "souls_followup_count", 0)
 
     def to_dict(self, request: Optional[HttpRequest] = None):
         data = super().to_dict()
@@ -105,6 +134,9 @@ class Mission(BaseModel):
             "created_by_id": self.created_by.id if self.created_by else None,
             "created_by_name": str(self.created_by) if self.created_by else None,
             "partnering_organization": self.partnering_organization or [],
+            "is_registration_open": self.is_registration_open,
+            "total_souls_won": commas(self.total_souls_won, use_decimal=False),
+            "total_souls_follow_up": commas(self.total_souls_follow_up, use_decimal=False),
         })
         return data
 
@@ -122,6 +154,7 @@ class MissionJIAParticipant(BaseModel):
     diet_advisory = models.TextField(blank=True, help_text="Dietary restrictions or advisories")
     days_of_attendance = models.JSONField(default=list, help_text="List of days attending and time")
     need_facilitation = models.BooleanField(default=False, help_text="Need facilitation")
+    facilitation_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Facilitation amount if needs facilitation")
     coming_as_couple = models.BooleanField(default=False, help_text="Coming as a couple")
     partner_name = models.CharField(max_length=100, blank=True, help_text="Partner's full name if coming as a couple")
     phone_number = PhoneNumberField()

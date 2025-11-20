@@ -244,6 +244,7 @@ def create_mission_participant(
     phone_number: str | None = None,
     diet_advisory: str | None = None,
     need_facilitation: bool = False,
+    facilitation_amount: Decimal | None = None,
     user_id: int | None = None,
     coming_as_couple: bool | None = False,
     partner_name: str | None = ""
@@ -258,6 +259,15 @@ def create_mission_participant(
 
     if coming_as_couple and not partner_name:
         raise CustomValidationError("Partner name is required when coming as a couple.")
+
+    if need_facilitation and not facilitation_amount:
+        raise CustomValidationError("Facilitation amount is required.")
+
+    if facilitation_amount and not need_facilitation:
+        raise CustomValidationError("Facilitation amount not needed")
+
+    if facilitation_amount and (facilitation_amount < 0 or facilitation_amount > 1000):
+        raise CustomValidationError("Invalid facilitation amount.")
 
     mission = mission_details(mission_id=mission_id)
     today = timezone.now().date()

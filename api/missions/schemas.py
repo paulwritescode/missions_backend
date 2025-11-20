@@ -181,18 +181,19 @@ class MissionOutSchema(BaseOut):
     registration_fee_required: bool | None = None
     registration_fee: Decimal | None = None
     couple_registration_fee: Decimal | None = None
+    is_registration_open: bool | None = None
+    total_souls_won: str | None = None
+    total_souls_followup: str | None = None
 
 
 class AttendanceDay(Schema):
     day: int
     day_date: datetime.date | None = None
-    check_in_time: datetime.time | None = None
 
 
 class AttendanceDayOut(Schema):
     day: int
     day_date: str | None = None
-    check_in_time: str | None = None
 
 
 class MissionParticipantCreateSchema(Schema):

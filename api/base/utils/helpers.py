@@ -11,8 +11,8 @@ from django.utils import timezone
 from base.utils.exceptions import CustomValidationError
 
 
-def commas(value: Union[Decimal, int, float]) -> str:
-    return "{:,.2f}".format(value)
+def commas(value: Union[Decimal, int, float], use_decimal: bool = False) -> str:
+    return "{:,.2f}".format(value) if use_decimal else "{:,}".format(value)
 
 
 def format_phone_number(phone_number):

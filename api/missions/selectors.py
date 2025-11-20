@@ -4,9 +4,12 @@ from django.db import models
 
 from base.utils.exceptions import CustomValidationError
 from base.utils.helpers import apply_sorting
+from django.db.models import Count, Q
 from missions.constants import EventType
 from missions.filters import LocationFilter, MissionFilter, MissionJIAFilter, ReportsFilter, MissionGalleryFilter
 from missions.models import MissionCategory, Location, Mission, MissionJIAParticipant, Report, MissionGallery
+
+from api.souls.constants import SoulStatus
 
 
 def location_details(location_id: int) -> Location:
@@ -84,14 +87,25 @@ def mission_details(mission_id: int) -> Mission:
     Returns:
         Mission instance or None if not found.
     """
-    error_messsage = "Mission with the given ID does not exist."
+    error_message = "Mission with the given ID does not exist."
     try:
-        mission = Mission.objects.get(id=mission_id)
+        mission = (
+            Mission.objects
+            .annotate(
+                souls_won_count=Count("souls", filter=Q(souls__status=SoulStatus.NEW_CONVERT)),
+                souls_followup_count=Count("souls", filter=Q(souls__status=SoulStatus.FOLLOW_UP)),
+                participants_count=Count("participants", filter=Q(participants__is_archived=False)),
+            )
+            .select_related("category", "location")
+            .get(id=mission_id)
+        )
+
         if mission.is_archived:
-            raise CustomValidationError(error_messsage)
+            raise CustomValidationError(error_message)
+
         return mission
     except Mission.DoesNotExist:
-        raise CustomValidationError(error_messsage)
+        raise CustomValidationError(error_message)
 
 
 def missions_list(filters: Optional[Dict[str, Any]] = None) -> models.QuerySet:
@@ -104,15 +118,21 @@ def missions_list(filters: Optional[Dict[str, Any]] = None) -> models.QuerySet:
     Returns:
         QuerySet of Mission instances.
     """
-    qs = Mission.objects.filter(is_archived=False).select_related('category', 'location').order_by('-start_date')
+    qs = (
+        Mission.objects
+        .filter(is_archived=False)
+        .select_related('category', 'location')
+        .annotate(
+            souls_won_count=Count("souls", filter=Q(souls__status=SoulStatus.NEW_CONVERT)),
+            souls_followup_count=Count("souls", filter=Q(souls__status=SoulStatus.FOLLOW_UP)),
+        )
+        .order_by('-start_date')
+    )
+
     if filters:
         if 'status' in filters and filters['status'] is not None:
             filters['status'] = filters['status'].value
 
-    status_value = filters.get('status', None)
-    print("Mission Status Filters:", )
-    print("Mission Filters:", filters)
-    print(status_value, type(status_value))
     return MissionFilter(filters, qs).qs if filters else qs
 
 
