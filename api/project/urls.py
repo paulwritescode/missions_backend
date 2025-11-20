@@ -36,4 +36,7 @@ if settings.ALLOW_ADMIN_SITE:
 urlpatterns += [
     path("api/", api.urls),
     path("health/", health_check),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+]
+
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -140,9 +140,10 @@ def create_mission(
     end_date: datetime.date,
     partnering_organization: Optional[list[Dict]] = None,
     registration_close_date: Optional[datetime.date] = None,
-    registration_fee_required: Optional[bool] = None,
+    registration_fee_required: Optional[bool] = True,
     registration_fee: Optional[Decimal] = None,
-    couple_registration_fee: Optional[Decimal] = None
+    couple_registration_fee: Optional[Decimal] = None,
+    banner_image=None
 ) -> Mission:
     """
     Create a new mission.
@@ -158,6 +159,7 @@ def create_mission(
         registration_close_date: Registration close date for the mission.
         registration_fee: Registration fee for the mission.
         couple_registration_fee: Couple registration fee for the mission.
+        banner_image: Banner image for the mission.
 
     Returns:
         Created Mission instance.
@@ -183,7 +185,8 @@ def create_mission(
         registration_close_date=registration_close_date,
         registration_fee_required=registration_fee_required,
         registration_fee=registration_fee,
-        couple_registration_fee=couple_registration_fee
+        couple_registration_fee=couple_registration_fee,
+        banner_image=banner_image
     )
     return mission
 
@@ -234,6 +237,21 @@ def delete_mission(mission_id: int) -> Mission:
     return mission
 
 
+def get_mission_registration_fee(mission: Mission, is_couple: bool = False) -> Decimal:
+    """
+    Get the registration fee for a mission.
+
+    Args:
+        mission: ID of the mission.
+        is_couple: Whether the participant is coming as a couple.
+    """
+    fee = Decimal(0)
+    if is_couple:
+        fee = mission.couple_registration_fee or Decimal(0)
+    else:
+        fee = mission.registration_fee or Decimal(0)
+    return fee
+
 
 def create_mission_participant(
     mission_id: int,
@@ -251,8 +269,10 @@ def create_mission_participant(
 ):
     if not full_name and not user_id:
         raise CustomValidationError("Either full name or user id must be provided.")
-
+    if facilitation_amount is None:
+        facilitation_amount = Decimal(0)
     user = user_details(user_id) if user_id else None
+    mission = mission_details(mission_id)
 
     if not phone_number and (not user or not user.phone_number):
         raise CustomValidationError("Phone number is a required field")
@@ -266,7 +286,9 @@ def create_mission_participant(
     if facilitation_amount and not need_facilitation:
         raise CustomValidationError("Facilitation amount not needed")
 
-    if facilitation_amount and (facilitation_amount < 0 or facilitation_amount > 1000):
+    mission_fee = get_mission_registration_fee(mission, coming_as_couple)
+
+    if facilitation_amount < 0 or facilitation_amount > mission_fee:
         raise CustomValidationError("Invalid facilitation amount.")
 
     mission = mission_details(mission_id=mission_id)
@@ -318,6 +340,7 @@ def create_mission_participant(
             diet_advisory=diet_advisory,
             days_of_attendance=sorted(days_of_attendance, key=lambda x: x["day"]),
             need_facilitation=need_facilitation,
+            facilitation_amount=facilitation_amount,
             gender=gender,
             coming_as_couple=coming_as_couple,
             partner_name=partner_name

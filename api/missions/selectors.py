@@ -9,7 +9,7 @@ from missions.constants import EventType
 from missions.filters import LocationFilter, MissionFilter, MissionJIAFilter, ReportsFilter, MissionGalleryFilter
 from missions.models import MissionCategory, Location, Mission, MissionJIAParticipant, Report, MissionGallery
 
-from api.souls.constants import SoulStatus
+from souls.constants import SoulStatus
 
 
 def location_details(location_id: int) -> Location:

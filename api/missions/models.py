@@ -13,8 +13,7 @@ from missions.constants import LocationCategoryType, MissionStatusType, EventTyp
 from missions.schemas import AttendanceDayOut
 from users.constants import GenderType
 
-from api.base.utils.helpers import commas
-from api.souls.constants import SoulStatus
+from base.utils.helpers import commas
 
 
 def get_reports_dir(instance, filename):
@@ -137,6 +136,7 @@ class Mission(BaseModel):
             "is_registration_open": self.is_registration_open,
             "total_souls_won": commas(self.total_souls_won, use_decimal=False),
             "total_souls_follow_up": commas(self.total_souls_follow_up, use_decimal=False),
+            "banner_image": request.build_absolute_uri(self.banner_image.url) if request and self.banner_image else None
         })
         return data
 

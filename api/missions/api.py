@@ -168,8 +168,12 @@ def missions_list_api(request, filters: schemas.MissionFilterSchema = Query(...)
     auth=jwt_auth
 )
 @require_permission("create_mission")
-def create_mission_api(request, mission_in: schemas.MissionCreateSchema):
-    mission = services.create_mission(**mission_in.dict())
+def create_mission_api(request, mission_in: schemas.MissionCreateSchema = Form(...)):
+    banner_file = request.FILES.get("banner_image")
+    mission_in_dict = mission_in.dict()
+    if banner_file:
+        mission_in_dict["banner_image"] = banner_file
+    mission = services.create_mission(**mission_in_dict)
     return 201, schemas.MissionOutSchema(**mission.to_dict(request))
 
 
@@ -179,8 +183,12 @@ def create_mission_api(request, mission_in: schemas.MissionCreateSchema):
     auth=jwt_auth
 )
 @require_permission("update_mission")
-def update_mission_api(request, mission_id: int, mission_in: schemas.MissionUpdateSchema):
-    mission = services.update_mission(mission_id=mission_id, update_dict=mission_in.dict(exclude_unset=True))
+def update_mission_api(request, mission_id: int, mission_in: schemas.MissionUpdateSchema = Form(...)):
+    banner_file = request.FILES.get("banner_image")
+    mission_in_dict = mission_in.dict(exclude_unset=True)
+    if banner_file:
+        mission_in_dict["banner_image"] = banner_file
+    mission = services.update_mission(mission_id=mission_id, update_dict=mission_in_dict)
     return 200, schemas.MissionOutSchema(**mission.to_dict(request))
 
 

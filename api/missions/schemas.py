@@ -130,9 +130,10 @@ class MissionCreateSchema(Schema):
     end_date: datetime.date
     partnering_organization: list[str] | None = []
     registration_close_date: datetime.date | None = None
-    registration_fee_required: bool | None = None
-    registration_fee: Decimal | None = None
-    couple_registration_fee: Decimal | None = None
+    registration_fee_required: bool = True
+    registration_fee: Decimal = Decimal(0)
+    couple_registration_fee: Decimal = Decimal(0)
+    banner_image: str | None = None
 
 
 class MissionUpdateSchema(Schema):
@@ -150,6 +151,7 @@ class MissionUpdateSchema(Schema):
     registration_fee_required: bool | None = None
     registration_fee: Decimal | None = None
     couple_registration_fee: Decimal | None = None
+    banner_image: str | None = None
 
 
 class MissionFilterSchema(BaseQuery):
@@ -184,6 +186,7 @@ class MissionOutSchema(BaseOut):
     is_registration_open: bool | None = None
     total_souls_won: str | None = None
     total_souls_followup: str | None = None
+    banner_image: str | None = None
 
 
 class AttendanceDay(Schema):
