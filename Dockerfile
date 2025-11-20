@@ -36,4 +36,3 @@ CMD poetry run python api/manage.py collectstatic --no-input && \
     poetry run python api/manage.py migrate && \
     poetry run python api/superuser_setup.py && \
     poetry run python api/manage.py runserver 0.0.0.0:8000
-

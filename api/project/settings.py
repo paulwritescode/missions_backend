@@ -150,11 +150,10 @@ ADMIN_URL = config("ADMIN_URL", "admin/")
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "/static/"
-STATIC_ROOT = Path(BASE_DIR, "static")
+STATIC_ROOT = Path(BASE_DIR.parent, "static")
 
-MEDIA_ROOT = Path(BASE_DIR, "media")
+MEDIA_ROOT = BASE_DIR.parent / "media"
 MEDIA_URL = "/media/"
-MEDIA_DIRS = (os.path.join(BASE_DIR, "media"),)
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
