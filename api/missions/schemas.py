@@ -208,6 +208,7 @@ class MissionParticipantCreateSchema(Schema):
     days_of_attendance: list[AttendanceDay]
     diet_advisory: str | None = ""
     need_facilitation: bool | None = False
+    facilitation_amount: Decimal = Decimal(0)
     gender: GenderChoices
     coming_as_couple: bool | None = False
     partner_name: str | None = ""
@@ -222,6 +223,7 @@ class MissionParticipantUpdateSchema(Schema):
     days_of_attendance: list[AttendanceDay] | None = None
     diet_advisory: str | None = None
     need_facilitation: bool | None
+    facilitation_amount: Decimal | None = None
 
 
 class BulkUpdateMissionJIASchema(Schema):
@@ -239,6 +241,9 @@ class MissionParticipantOutSchema(BaseOut):
     days_of_attendance: list[AttendanceDayOut]
     diet_advisory: str | None = None
     need_facilitation: bool
+    facilitation_amount: Decimal | None = None
+    coming_as_couple: bool | None = None
+    partner_name: str | None = None
     gender: str
 
 
