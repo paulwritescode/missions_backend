@@ -203,6 +203,15 @@ def mission_detail_api(request, mission_id: int):
     return 200, schemas.MissionOutSchema(**mission.to_dict(request))
 
 
+@router.get(
+    "/{mission_id}/public/",
+    response={200: schemas.MinimalMissionOutSchema, 400: DetailOut},
+)
+def mission_detail_public_facing_api(request, mission_id: int):
+    mission = selectors.mission_details(mission_id=mission_id)
+    return 200, schemas.MinimalMissionOutSchema(**mission.to_dict(request))
+
+
 @router.delete(
     "/{mission_id}/delete/",
     response={204: str, 400: DetailOut},
@@ -210,7 +219,7 @@ def mission_detail_api(request, mission_id: int):
 )
 @require_permission("delete_mission")
 def delete_mission_api(request, mission_id: int):
-    mission = services.delete_mission(mission_id=mission_id)
+    services.delete_mission(mission_id=mission_id)
     return 204, "Mission deleted successfully"
 
 
@@ -245,9 +254,7 @@ def mission_participants_list_api(
 @router.post(
     "/participants/create/",
     response={201: schemas.MissionParticipantOutSchema, 400: DetailOut},
-    auth=jwt_auth
 )
-@require_permission("create_jia_participant")
 def create_mission_participant_api(request, participant_in: schemas.MissionParticipantCreateSchema):
     participant = services.create_mission_participant(**participant_in.dict())
     return 201, schemas.MissionParticipantOutSchema(**participant.to_dict(request))

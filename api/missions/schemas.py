@@ -167,12 +167,10 @@ class MissionFilterSchema(BaseQuery):
     registration_close_date_after: str | None = None
 
 
-class MissionOutSchema(BaseOut):
+class MinimalMissionOutSchema(BaseOut):
     title: str
     description: str
-    category_id: int | None = None
     category_name: str | None = None
-    location_id: int | None = None
     location_name: str | None = None
     start_date: str
     end_date: str
@@ -185,6 +183,11 @@ class MissionOutSchema(BaseOut):
     couple_registration_fee: Decimal | None = None
     is_registration_open: bool | None = None
     total_souls_won: str | None = None
+
+
+class MissionOutSchema(MinimalMissionOutSchema):
+    category_id: int | None = None
+    location_id: int | None = None
     total_souls_followup: str | None = None
     banner_image: str | None = None
 

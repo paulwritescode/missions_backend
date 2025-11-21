@@ -315,7 +315,7 @@ def create_mission_participant(
                 day_date = day_date.date()
 
             if not (mission_start <= day_date <= mission_end):
-                raise CustomValidationError(f"Day date {day_date} is out of mission range: {mission_start} to {mission_end}.")
+                raise CustomValidationError(f"Day date {day_date} is out of range. The mission starts on {mission_start} and ends on {mission_end}.")
 
             # Expected date from mission start
             expected_date = mission_start + timedelta(days=day - 1)
