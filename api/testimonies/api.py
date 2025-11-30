@@ -10,7 +10,7 @@ from authentication.permissions import jwt_auth
 from base.schemas import DetailOut
 from base.api import paginate_response
 from base.utils.exceptions import CustomValidationError
-from users.decorators import require_permission
+from authentication.decorators import require_permission
 
 from testimonies import schemas, services, selectors
 
