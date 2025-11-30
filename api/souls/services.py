@@ -52,6 +52,12 @@ def update_soul(soul_id, data) -> Soul:
         soul = Soul.objects.get(id=soul_id)
         for key, value in data.items():
             if value is not None:
+                if key == "location":
+                    location = location_details(value)
+                    setattr(soul, key, location)
+                if key == "mission":
+                    mission = mission_details(value)
+                    setattr(soul, key, mission)
                 setattr(soul, key, value)
         soul.full_clean()
         soul.save()

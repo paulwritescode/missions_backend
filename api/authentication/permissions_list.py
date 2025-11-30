@@ -103,6 +103,8 @@ MISSIONER_PERMISSIONS = {
     "view_jia_participant",
     "soul_stats",
     "delete_progress_update",
+    "update_testimony",
+    "update_testimony",
 }
 
 STAFF_PERMISSIONS = MISSIONER_PERMISSIONS | {

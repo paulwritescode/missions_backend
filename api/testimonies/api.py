@@ -100,7 +100,11 @@ def miracle_detail_api(request, miracle_id: int):
     response={200: schemas.MiracleOutSchema, 400: DetailOut},
     auth=jwt_auth
 )
-@require_permission("update_miracle")
+@require_permission(
+    "update_miracle",
+    restricted_roles=["missioner_template"],
+    restriction_handler=services.miracle_and_testimony_handler
+)
 def update_miracle_api(request, miracle_id: int, miracle_in: schemas.MiracleUpdateSchema = Form(...)):
     data = miracle_in.dict(exclude_unset=True)
     photo = request.FILES.get('photo')
@@ -137,7 +141,11 @@ def testimony_detail_api(request, testimony_id: int):
     response={200: schemas.TestimonyOutSchema, 400: DetailOut},
     auth=jwt_auth
 )
-@require_permission("update_testimony")
+@require_permission(
+    "update_testimony",
+    restricted_roles=["missioner_template"],
+    restriction_handler=services.miracle_and_testimony_handler
+)
 def update_testimony_api(request, testimony_id: int, testimony_in: schemas.TestimonyUpdateSchema = Form(...)):
     data = testimony_in.dict(exclude_unset=True)
     photo = request.FILES.get('photo')

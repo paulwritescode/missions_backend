@@ -147,3 +147,21 @@ def delete_miracle(miracle_id: int) -> Miracle:
         return miracle
     except Exception as e:
         raise CustomValidationError(str(e))
+
+
+def miracle_and_testimony_handler(user, kwargs):
+    print("SOUL ID KWARGS:", kwargs)
+    print("USER ID:", user.pk)
+
+    soul_id = kwargs.get('testimony_in', {}).soul_id or \
+              kwargs.get('miracle_in', {}).soul_id or \
+              kwargs.get('soul_id')
+
+    if not soul_id:
+        return None
+
+    soul = get_soul(soul_id)
+
+    if not soul.user or soul.user.pk != user.pk:
+        raise CustomValidationError("You can only edit miracles/testimonies for souls assigned to you.")
+    return None
