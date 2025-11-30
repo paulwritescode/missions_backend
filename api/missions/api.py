@@ -9,7 +9,8 @@ from base.api import paginate_response
 from base.schemas import DetailOut
 from base.utils.exceptions import CustomValidationError
 from missions import schemas, services, selectors
-from users.decorators import require_permission
+from authentication.decorators import require_permission
+
 
 router = Router(
     tags=["missions"],

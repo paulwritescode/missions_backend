@@ -9,7 +9,7 @@ from souls import selectors, services, schemas
 from authentication.permissions import jwt_auth
 from base.api import paginate_response
 from souls.services import progress_update_handler, missioner_soul_operations_handler
-from users.decorators import require_permission
+from authentication.decorators import require_permission
 
 router = Router(
     tags=["souls"],
