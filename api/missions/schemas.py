@@ -1,14 +1,11 @@
 import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 from ninja import Schema
-from pyasn1_modules.rfc3279 import ECPVer
 from pydantic import Field
 
 from base.schemas import BaseQuery, FilterQuery, BaseOut
-from missions.constants import EventType
 
 
 class MissionStatus(str, Enum):
@@ -16,6 +13,12 @@ class MissionStatus(str, Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
     ON_HOLD = "on_hold"
+
+
+class EventType(str, Enum):
+    """Event type choices"""
+    ONE_DAY = "one_day"
+    WEEK_LONG = "week_long"
 
 
 class GenderChoices(str, Enum):
