@@ -150,6 +150,7 @@ def progress_updates_list_api(request, params: schemas.ProgressUpdateQuery = Que
 )
 def create_progress_update_api(request, progress_update_in: schemas.ProgressUpdateCreate):
     """API endpoint to create a new progress update."""
+
     progress_update = services.create_progress_update(data=progress_update_in.dict())
     return 201, schemas.ProgressUpdateOut(**progress_update.to_dict(request))
 
