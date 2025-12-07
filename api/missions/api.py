@@ -43,7 +43,7 @@ def locations_list_api(request, filters: schemas.LocationsFilterSchema = Query(.
 )
 @require_permission("add_location")
 def create_location_api(request, location_in: schemas.LocationCreateSchema):
-    location = services.create_location(**location_in.dict())
+    location = services.create_location(user=request.user, **location_in.dict())
     return 201, schemas.LocationOutSchema(**location.to_dict(request))
 
 
@@ -54,7 +54,7 @@ def create_location_api(request, location_in: schemas.LocationCreateSchema):
 )
 @require_permission("update_location")
 def update_location_api(request, location_id: int, location_in: schemas.LocationUpdateSchema):
-    location = services.update_location(location_id=location_id, update_dict=location_in.dict(exclude_unset=True))
+    location = services.update_location(user=request.user, location_id=location_id, update_dict=location_in.dict(exclude_unset=True))
     return 200, schemas.LocationOutSchema(**location.to_dict(request))
 
 
@@ -76,7 +76,7 @@ def location_detail_api(request, location_id: int):
 )
 @require_permission("delete_location")
 def delete_location_api(request, location_id: int):
-    services.delete_location(location_id=location_id)
+    services.delete_location(user=request.user, location_id=location_id)
     return 204, "Location deleted successfully"
 
 
@@ -105,7 +105,7 @@ def mission_categories_list_api(request, filters: schemas.MissionCategoryFilterS
 )
 @require_permission("create_mission_category")
 def create_missions_category_api(request, category_in: schemas.MissionCategoryCreateSchema):
-    category = services.create_missions_category(**category_in.dict())
+    category = services.create_missions_category(user=request.user, **category_in.dict())
     return 201, schemas.MissionCategoryOutSchema(**category.to_dict())
 
 
@@ -117,6 +117,7 @@ def create_missions_category_api(request, category_in: schemas.MissionCategoryCr
 @require_permission("update_mission_category")
 def update_mission_category_api(request, category_id: int, category_in: schemas.MissionCategoryUpdateSchema):
     category = services.update_missions_category(
+        user=request.user,
         category_id=category_id,
         update_dict=category_in.dict(exclude_unset=True)
     )
@@ -141,7 +142,7 @@ def mission_category_detail_api(request, category_id: int):
 )
 @require_permission("delete_mission_category")
 def delete_mission_category_api(request, category_id: int):
-    category = services.delete_missions_category(category_id=category_id)
+    services.delete_missions_category(user=request.user, category_id=category_id)
     return 204, "Category deleted successfully"
 
 
@@ -190,7 +191,7 @@ def update_mission_api(request, mission_id: int, mission_in: schemas.MissionUpda
     mission_in_dict = mission_in.dict(exclude_unset=True)
     if banner_file:
         mission_in_dict["banner_image"] = banner_file
-    mission = services.update_mission(mission_id=mission_id, update_dict=mission_in_dict)
+    mission = services.update_mission(user=request.user, mission_id=mission_id, update_dict=mission_in_dict)
     return 200, schemas.MissionOutSchema(**mission.to_dict(request))
 
 
@@ -221,7 +222,7 @@ def mission_detail_public_facing_api(request, mission_id: int):
 )
 @require_permission("delete_mission")
 def delete_mission_api(request, mission_id: int):
-    services.delete_mission(mission_id=mission_id)
+    services.delete_mission(user=request.user, mission_id=mission_id)
     return 204, "Mission deleted successfully"
 
 
@@ -285,6 +286,7 @@ def update_mission_participant_api(
         participant_in: schemas.MissionParticipantUpdateSchema
 ):
     participant = services.update_mission_participant(
+        user=request.user,
         participant_id=participant_id,
         update_dict=participant_in.dict(exclude_unset=True)
     )
@@ -298,7 +300,7 @@ def update_mission_participant_api(
 )
 @require_permission("delete_jia_participant")
 def delete_mission_participant_api(request, participant_id: int):
-    services.delete_mission_participant(participant_id=participant_id)
+    services.delete_mission_participant(user=request.user, participant_id=participant_id)
     return 204, "Participant deleted successfully"
 
 
@@ -369,7 +371,7 @@ def update_mission_report_api(
     report_file = request.FILES.get("report_file")
     if report_file:
         report_dict_in["report_file"] = report_file
-    report = services.update_report(report_id=report_id, update_dict=report_dict_in)
+    report = services.update_report(user=request.user, report_id=report_id, update_dict=report_dict_in)
     return 200, schemas.ReportOutSchema(**report.to_dict(request))
 
 
@@ -380,7 +382,7 @@ def update_mission_report_api(
 )
 @require_permission("delete_mission_report")
 def delete_mission_report_api(request, report_id: int):
-    report = services.delete_report(report_id=report_id)
+    services.delete_report(user=request.user, report_id=report_id)
     return 204, "Mission report deleted successfully"
 
 
@@ -494,6 +496,7 @@ def mission_gallery_image_detail_api(request, image_id: int):
 @require_permission("delete_photo_gallery")
 def delete_mission_gallery_images_api(request, image_ids: schemas.MissionGalleryDeleteSchema):
     count = services.bulk_delete_gallery_images_by_mission(
+        user=request.user,
         mission_id=image_ids.mission_id,
         image_ids=image_ids.image_ids
     )

@@ -2,10 +2,13 @@
 Authentication API endpoints using Django Ninja.
 """
 from django.contrib.auth import authenticate
+from django.core.cache import cache
 from django.http import HttpRequest
+from django.utils import timezone
 from ninja import Router, Form
 from ninja.errors import HttpError
 
+from audit_logs.services import log_audit_event
 from authentication.backends import get_backend
 from authentication.permissions import jwt_auth
 from authentication.schemas import (
@@ -41,6 +44,10 @@ def login(request, data: LoginRequest):
     # Authenticate using Django's built-in system
     user = authenticate(email=email, password=password)
 
+    current_time = timezone.now()
+    # Format current time as 'YYYY-MM-DD HH:MM:SS'
+    formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
     if not user:
         raise HttpError(401, "Invalid email or password")
 
@@ -49,6 +56,27 @@ def login(request, data: LoginRequest):
 
     # Generate authentication data
     auth_data = get_auth_for_user(user)
+
+    if not user.is_staff:
+        return auth_data
+
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip_address = x_forwarded_for.split(',')[0]
+    else:
+        ip_address = request.META.get('REMOTE_ADDR')
+    existing_ip = cache.get("user_ip_{}".format(user.id))
+    if existing_ip != ip_address:
+        cache.set("user_ip_{}".format(user.id), ip_address, timeout=604800)
+    log_audit_event(
+        user=user,
+        action_type="login",
+        action_category="authentication",
+        action_description="{} logged in via email/password at {} using IP: {}".format(user.email if user else "Unknown user", formatted_time, ip_address),
+        is_successful=bool(user),
+        ip_address=ip_address
+    )
+
     return auth_data
 
 

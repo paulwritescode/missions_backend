@@ -15,7 +15,7 @@ class AuditLogSchema(BaseOut):
     flag_suspicious: bool
 
 
-class ActionType(Enum, str):
+class ActionType(str, Enum):
     LOGIN = "login"
     LOGOUT = "logout"
     CREATION = "creation"
@@ -24,7 +24,7 @@ class ActionType(Enum, str):
     REPORTS = "reports"
 
 
-class ActionCategory(Enum, str):
+class ActionCategory(str, Enum):
     AUTHENTICATION = "authentication"
     SOULS = "souls"
     LOCATIONS = "locations"

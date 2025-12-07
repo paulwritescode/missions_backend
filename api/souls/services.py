@@ -10,6 +10,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from audit_logs.constants import ActionType
+from audit_logs.services import log_audit_event
 from base.utils.exceptions import CustomValidationError, handle_cleaning_error
 from base.utils.file_parser import FileParser
 from base.utils.helpers import validate_date
@@ -22,7 +24,6 @@ from users.selectors import user_details
 
 
 def create_soul(data) -> Soul:
-
     try:
         location_id = data.get("location")
         user_id = data.get("user")
@@ -47,9 +48,10 @@ def create_soul(data) -> Soul:
     return soul
 
 
-def update_soul(soul_id, data) -> Soul:
+def update_soul(user, soul_id, data) -> Soul:
     try:
-        soul = Soul.objects.get(id=soul_id)
+        soul = get_soul(soul_id)
+        original_fields = {field: getattr(soul, field) for field in data.keys()}
         for key, value in data.items():
             if value is not None:
                 if key == "location":
@@ -60,9 +62,18 @@ def update_soul(soul_id, data) -> Soul:
                     setattr(soul, key, mission)
                 setattr(soul, key, value)
         soul.full_clean()
+        changed_fields = {field: (original_fields[field], getattr(soul, field)) for field in data.keys() if original_fields[field] != getattr(soul, field)}
         soul.save()
-    except Soul.DoesNotExist:
-        raise CustomValidationError(f"Soul with ID {soul_id} does not exist")
+        if changed_fields:
+            changed_fields_str = ", ".join(f"{field}: '{original}' -> '{new}'" for field, (original, new) in changed_fields.items())
+            log_message = f"Soul ID {soul_id} updated. Changes: {changed_fields_str}"
+            log_audit_event(
+                user=user,
+                action_type=ActionType.MODIFICATION,
+                action_category="souls",
+                action_description=log_message,
+                is_successful=True
+            )
     except ValidationError as e:
         error_message = handle_cleaning_error(e)
         raise CustomValidationError(error_message)
@@ -71,10 +82,17 @@ def update_soul(soul_id, data) -> Soul:
     return soul
 
 
-def delete_soul(soul_id) -> Soul:
+def delete_soul(user, soul_id) -> Soul:
     soul = get_soul(soul_id)
     try:
         soul.delete()
+        log_audit_event(
+            user=user,
+            action_type=ActionType.DELETION,
+            action_category="souls",
+            action_description=f"Soul ID {soul_id} deleted.",
+            is_successful=True
+        )
         return soul
     except Exception as e:
         raise CustomValidationError("Error deleting soul: {}".format(e))
@@ -144,7 +162,7 @@ def validate_age_group(value, row):
         )
 
 
-def upload_souls(file, mission_id: int, location_id: int):
+def upload_souls(user, file, mission_id: int, location_id: int):
     try:
         mission = mission_details(mission_id)
         location = location_details(location_id)
@@ -207,7 +225,13 @@ def upload_souls(file, mission_id: int, location_id: int):
 
         with transaction.atomic():
             Soul.objects.bulk_create(souls_to_create, batch_size=1000)
-
+        log_audit_event(
+            user=user,
+            action_type=ActionType.CREATION,
+            action_category="souls",
+            action_description=f"Uploaded {len(souls_to_create)} souls via file upload.",
+            is_successful=True
+        )
         return {"message": f"{len(souls_to_create)} souls successfully uploaded."}
     except CustomValidationError as e:
         raise e

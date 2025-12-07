@@ -91,7 +91,7 @@ def upload_souls_api(
         - description
         - date_added
     """
-    result = services.upload_souls(file=file, mission_id=mission_id, location_id=location_id)
+    result = services.upload_souls(user=request.user, file=file, mission_id=mission_id, location_id=location_id)
     return JsonResponse(result)
 
 
@@ -103,7 +103,7 @@ def upload_souls_api(
 )
 def update_soul_api(request, soul_id: int, soul_in: schemas.SoulUpdate):
     """API endpoint to update an existing soul."""
-    soul = services.update_soul(soul_id=soul_id, data=soul_in.dict())
+    soul = services.update_soul(user=request.user, soul_id=soul_id, data=soul_in.dict())
     return schemas.SoulOut(**soul.to_dict(request))
 
 
@@ -115,7 +115,7 @@ def update_soul_api(request, soul_id: int, soul_in: schemas.SoulUpdate):
 )
 def delete_soul_api(request, soul_id: int):
     """API endpoint to delete a soul by ID."""
-    soul = services.delete_soul(soul_id=soul_id)
+    soul = services.delete_soul(user=request.user, soul_id=soul_id)
     return schemas.SoulOut(**soul.to_dict(request))
 
 

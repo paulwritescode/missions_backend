@@ -1,6 +1,7 @@
 from typing import List
 
-from ninja import Router
+from django.http import JsonResponse
+from ninja import Router, Query
 
 from audit_logs import schemas
 from audit_logs.selectors import audit_log_details, audit_logs_list
@@ -14,37 +15,24 @@ router = Router(tags=["audit_logs"])
 
 
 @router.get(
-    "/{id}/",
-    auth=jwt_auth,
-    response={200: schemas.AuditLogSchema, 400: DetailOut},
-)
-@require_permission("view_auditlog")
-def get_audit_log(request, id: int):
-    """
-    Retrieve details of a specific audit log entry by its ID.
-    """
-    audit_log = audit_log_details(id)
-    return audit_log
-
-
-@router.get(
     "/",
     auth=jwt_auth,
     response={200: List[schemas.AuditLogSchema], 400: DetailOut},
 )
 @require_permission("list_auditlogs")
-def list_audit_logs(request, filters: schemas.AuditLogQueryIn = None):
+def list_audit_logs(request, filters: schemas.AuditLogQueryIn = Query(...)):
     """
     List all audit log entries with optional filters.
     """
-    audit_logs = audit_logs_list(filters)
-    return paginate_response(
+    audit_logs = audit_logs_list(filters.dict())
+    response = paginate_response(
         request=request,
         queryset=audit_logs,
         schema=schemas.AuditLogSchema,
         page_size=filters.page_size,
         page=filters.page,
     )
+    return JsonResponse(response, safe=False)
 
 
 @router.post(
@@ -73,3 +61,17 @@ def unflag_suspicious_audit_log_api(request, id: int):
     """
     audit_log = unflag_suspicious_log(id)
     return audit_log
+
+
+@router.get(
+    "/{id}/",
+    auth=jwt_auth,
+    response={200: schemas.AuditLogSchema, 400: DetailOut},
+)
+@require_permission("view_auditlog")
+def get_audit_log(request, id: int):
+    """
+    Retrieve details of a specific audit log entry by its ID.
+    """
+    audit_log = audit_log_details(id)
+    return schemas.AuditLogSchema(**audit_log.to_dict())

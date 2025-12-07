@@ -13,7 +13,7 @@ class AuditLog(BaseModel):
     action_category = models.CharField(max_length=100)
     action_description = models.CharField(max_length=300)
     is_successful = models.BooleanField()
-    ip_address = models.IPAddressField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
     flag_suspicious = models.BooleanField(default=False)
 
     class Meta:

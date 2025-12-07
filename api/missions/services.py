@@ -5,6 +5,8 @@ from typing import Dict, Any, Optional, List
 from django.db import IntegrityError
 from django.utils import timezone
 
+from audit_logs.schemas import ActionType
+from audit_logs.services import log_audit_event
 from base.utils.exceptions import CustomValidationError
 from base.utils.helpers import serialize_types
 from missions.constants import EventType
@@ -15,6 +17,7 @@ from users.selectors import user_details
 
 
 def create_location(
+    user,
     name: str,
     category: str,
     description: str = "",
@@ -24,6 +27,7 @@ def create_location(
     Create a new location.
 
     Args:
+        user: User creating the location.
         name: Name of the location.
         category: Category of the location.
         description: Description of the location.
@@ -49,45 +53,85 @@ def create_location(
         description=description,
         parent_location=parent_location
     )
+    log_audit_event(
+        user=user,
+        action_category="locations",
+        action_type=ActionType.CREATION,
+        action_description=f"{user.email} created location '{location.pk}:{location.name}'",
+        is_successful=True
+    )
     return location
 
 
-def update_location(update_dict: Dict[str, Any], location_id: int) -> Location:
+def update_location(user, update_dict: Dict[str, Any], location_id: int) -> Location:
     """
     Update a location.
 
     Args:
+        user: User performing the update.
         update_dict: Dictionary of fields to update.
         location_id: ID of the location to update.
     """
     location = location_details(location_id)
+    original_values = {
+        key: getattr(location, key)
+        for key in update_dict.keys()
+        if hasattr(location, key)
+    }
     if 'parent_location_id' in update_dict:
         parent_location = location_details(update_dict.pop('parent_location_id'))
         location.parent_location = parent_location
 
     for key, value in update_dict.items():
         setattr(location, key, value)
+    changed_fields = []
+    for key, old_value in original_values.items():
+        new_value = getattr(location, key)
+        if old_value != new_value:
+            changed_fields.append(f"{key}: '{old_value}' → '{new_value}'")
     location.save()
+    if changed_fields:
+        changes_text = ", ".join(changed_fields)
+        log_description = (
+            f"{user.email} updated location '{location.pk}:{location.name}' "
+            f"Changes: {changes_text}"
+        )
+        log_audit_event(
+            action_category="locations",
+            action_type=ActionType.MODIFICATION,
+            action_description=log_description,
+            is_successful=True,
+            user=user
+        )
     return location
 
 
-def delete_location(location_id: int) -> Location:
+def delete_location(user, location_id: int) -> Location:
     """
     Delete a location.
 
     Args:
+        user: User performing the deletion.
         location_id: ID of the location to delete.
     """
     location = location_details(location_id)
     location.delete()
+    log_audit_event(
+        action_category="locations",
+        action_type=ActionType.DELETION,
+        action_description=f"{user.email} deleted location '{location.pk}:{location.name}'",
+        is_successful=True,
+        user=user
+    )
     return location
 
 
-def create_missions_category(name: str, description: str = "", event_type: Optional[EventType] = None) -> MissionCategory:
+def create_missions_category(user, name: str, description: str = "", event_type: Optional[EventType] = None) -> MissionCategory:
     """
     Create a mission category if it doesn't exist.
 
     Args:
+        user: User creating the category.
         name: Name of the category.
         description: Description of the category.
         event_type: Event type of the category.
@@ -99,35 +143,75 @@ def create_missions_category(name: str, description: str = "", event_type: Optio
             "event_type": event_type.value
         }
     )
+    if created:
+        log_audit_event(
+            user=user,
+            action_category="mission_categories",
+            action_type=ActionType.CREATION,
+            action_description=f"{user.email} created mission category '{category.pk}:{category.name}'",
+            is_successful=True
+        )
     return category
 
 
-def update_missions_category(update_dict: Dict[str, Any], category_id: int) -> MissionCategory:
+def update_missions_category(user, update_dict: Dict[str, Any], category_id: int) -> MissionCategory:
     """
     Update a mission category.
 
     Args:
+        user: User performing the update.
         update_dict: Dictionary of fields to update.
         category_id: ID of the category to update.
     """
     category = mission_category_details(category_id)
+    original_values = {
+        key: getattr(category, key)
+        for key in update_dict.keys()
+        if hasattr(category, key)
+    }
     for key, value in update_dict.items():
         if key == 'event_type' and value is not None:
             value = value.value
         setattr(category, key, value)
+    changed_fields = []
+    for key, old_value in original_values.items():
+        new_value = getattr(category, key)
+        if old_value != new_value:
+            changed_fields.append(f"{key}: '{old_value}' → '{new_value}'")
     category.save()
+    if changed_fields:
+        changes_text = ", ".join(changed_fields)
+        log_description = (
+            f"{user.email} updated mission category '{category.pk}:{category.name}' "
+            f"Changes: {changes_text}"
+        )
+        log_audit_event(
+            action_category="mission_categories",
+            action_type=ActionType.MODIFICATION,
+            action_description=log_description,
+            is_successful=True,
+            user=user
+        )
     return category
 
 
-def delete_missions_category(category_id: int) -> MissionCategory:
+def delete_missions_category(user, category_id: int) -> MissionCategory:
     """
     Delete a mission category.
 
     Args:
+        user: User performing the deletion.
         category_id: ID of the category to delete.
     """
     category = mission_category_details(category_id)
     category.delete()
+    log_audit_event(
+        user=user,
+        action_category="mission_categories",
+        action_type=ActionType.DELETION,
+        action_description=f"{user.email} deleted mission category '{category.pk}:{category.name}'",
+        is_successful=True
+    )
     return category
 
 
@@ -149,6 +233,7 @@ def create_mission(
     """
     Create a new mission.
     Args:
+        user: User creating the mission.
         title: Title of the mission.
         description: Description of the mission.
         category_id: MissionCategory id.
@@ -193,15 +278,21 @@ def create_mission(
     return mission
 
 
-def update_mission(update_dict: Dict[str, Any], mission_id: int) -> Mission:
+def update_mission(user, update_dict: Dict[str, Any], mission_id: int) -> Mission:
     """
     Update a mission.
 
     Args:
+        user: User performing the update.
         update_dict: Dictionary of fields to update.
         mission_id: ID of the mission to update.
     """
     mission = mission_details(mission_id)
+    original_values = {
+        key: getattr(mission, key)
+        for key in update_dict.keys()
+        if hasattr(mission, key)
+    }
     if 'start_date' in update_dict and 'end_date' in update_dict:
         if update_dict['start_date'] > update_dict['end_date']:
             raise CustomValidationError("Start date cannot be after end date.")
@@ -222,20 +313,47 @@ def update_mission(update_dict: Dict[str, Any], mission_id: int) -> Mission:
 
     for key, value in update_dict.items():
         setattr(mission, key, value)
+    changed_fields = []
+    for key, old_value in original_values.items():
+        new_value = getattr(mission, key)
+        if old_value != new_value:
+            changed_fields.append(f"{key}: '{old_value}' → '{new_value}'")
     mission.save()
+    if changed_fields:
+        changes_text = ", ".join(changed_fields)
+        log_description = (
+            f"{user.email} updated mission '{mission.pk}:{mission.title}' "
+            f"Changes: {changes_text}"
+        )
+        log_audit_event(
+            action_category="missions",
+            action_type=ActionType.MODIFICATION,
+            action_description=log_description,
+            is_successful=True,
+            user=user
+        )
     return mission
 
 
-def delete_mission(mission_id: int) -> Mission:
+def delete_mission(user, mission_id: int) -> Mission:
     """
     Delete a mission.
 
     Args:
+        user: User performing the deletion.
         mission_id: ID of the mission to delete.
     """
     mission = mission_details(mission_id)
     mission.is_archived = True
+    log_description = f"{user.email} deleted mission '{mission.pk}:{mission.title}'"
     mission.save()
+    log_audit_event(
+        action_category="missions",
+        action_type=ActionType.DELETION,
+        action_description=log_description,
+        is_successful=True,
+        user=user
+    )
     return mission
 
 
@@ -247,7 +365,6 @@ def get_mission_registration_fee(mission: Mission, is_couple: bool = False) -> D
         mission: ID of the mission.
         is_couple: Whether the participant is coming as a couple.
     """
-    fee = Decimal(0)
     if is_couple:
         fee = mission.couple_registration_fee or Decimal(0)
     else:
@@ -357,31 +474,63 @@ def create_mission_participant(
     return participant
 
 
-def update_mission_participant(update_dict: Dict[str, Any], participant_id: int) -> MissionJIAParticipant:
+def update_mission_participant(user, update_dict: Dict[str, Any], participant_id: int) -> MissionJIAParticipant:
     """
     Update a mission participant.
 
     Args:
+        user: User performing the update.
         update_dict: Dictionary of fields to update.
         participant_id: ID of the participant to update.
     """
     participant = mission_participant_details(participant_id)
+    original_fields = {
+        key: getattr(participant, key)
+        for key in update_dict.keys()
+        if hasattr(participant, key)
+    }
     for key, value in update_dict.items():
         setattr(participant, key, value)
+    changed_fields = []
+    for key, old_value in original_fields.items():
+        new_value = getattr(participant, key)
+        if old_value != new_value:
+            changed_fields.append(f"{key}: '{old_value}' → '{new_value}'")
     participant.save()
+    if changed_fields:
+        changes_text = ", ".join(changed_fields)
+        log_description = (
+            f"Updated mission participant '{participant.pk}:{participant.full_name}' "
+            f"Changes: {changes_text}"
+        )
+        log_audit_event(
+            user=user,
+            action_category="missions",
+            action_type=ActionType.MODIFICATION,
+            action_description=log_description,
+            is_successful=True
+        )
     return participant
 
 
-def delete_mission_participant(participant_id: int) -> MissionJIAParticipant:
+def delete_mission_participant(user, participant_id: int) -> MissionJIAParticipant:
     """
     Delete a mission participant.
 
     Args:
+        user: User performing the deletion.
         participant_id: ID of the participant to delete.
     """
     participant = mission_participant_details(participant_id)
     participant.is_archived = True
     participant.save()
+    log_audit_event(
+        user=user,
+        action_category="missions",
+        action_type=ActionType.DELETION,
+        action_description=f"Deleted mission participant '{participant.phone_number}:{participant.full_name}' from mission '{participant.mission.pk}:{participant.mission.title}'",
+        is_successful=True
+    )
     return participant
 
 
@@ -453,38 +602,78 @@ def create_report(
         created_by=created_by,
         report_file=report_file
     )
+    log_audit_event(
+        user=created_by,
+        action_category="reports",
+        action_type=ActionType.CREATION,
+        action_description=f"{created_by.email} created report '{report.pk}:{report.title}' for mission '{mission.pk}:{mission.title}'",
+        is_successful=True
+    )
     return report
 
 
-def update_report(update_dict: Dict[str, Any], report_id: int) -> Report:
+def update_report(user, update_dict: Dict[str, Any], report_id: int) -> Report:
     """
     Update a report.
 
     Args:
+        user: User performing the update.
         update_dict: Dictionary of fields to update.
         report_id: ID of the report to update.
     """
     report = report_details(report_id)
+    original_fields = {
+        key: getattr(report, key)
+        for key in update_dict.keys()
+        if hasattr(report, key)
+    }
     if 'mission_id' in update_dict:
         mission = mission_details(update_dict.pop('mission_id'))
         report.mission = mission
 
     for key, value in update_dict.items():
         setattr(report, key, value)
+    changed_fields = []
+    for key, old_value in original_fields.items():
+        new_value = getattr(report, key)
+        if old_value != new_value:
+            changed_fields.append(f"{key}: '{old_value}' → '{new_value}'")
+    if changed_fields:
+        changes_text = ", ".join(changed_fields)
+        log_description = (
+            f"{user.email} updated report '{report.pk}:{report.title}' "
+            f"Changes: {changes_text}"
+        )
+        log_audit_event(
+            user=user,
+            action_category="reports",
+            action_type=ActionType.MODIFICATION,
+            action_description=log_description,
+            is_successful=True
+        )
     report.save()
     return report
 
 
-def delete_report(report_id: int) -> Report:
+def delete_report(user, report_id: int) -> Report:
     """
     Delete a report.
 
     Args:
+        user: User performing the deletion.
         report_id: ID of the report to delete.
     """
     report = report_details(report_id)
     report.is_archived = True
+    log_message = f"{user.email} deleted report '{report.pk}:{report.title}' for mission '{report.mission.pk}:{report.mission.title}'"
     report.save()
+    log_audit_event(
+        user=user,
+        action_category="reports",
+        action_type=ActionType.DELETION,
+        action_description=log_message,
+        is_successful=True
+    )
     return report
 
 
@@ -513,11 +702,12 @@ def bulk_create_gallery_images(mission_id: int, uploaded_by_id: int, images_data
     return images
 
 
-def bulk_delete_gallery_images_by_mission(mission_id: int, image_ids: List[int]) -> int:
+def bulk_delete_gallery_images_by_mission(user, mission_id: int, image_ids: List[int]) -> int:
     """
     Bulk delete all gallery images associated with a specific mission.
 
     Args:
+        user: User performing the deletion.
         mission_id: ID of the mission whose gallery images are to be deleted.
         image_ids: List of image IDs to delete.
 
@@ -527,4 +717,11 @@ def bulk_delete_gallery_images_by_mission(mission_id: int, image_ids: List[int])
     images = MissionGallery.objects.filter(mission__id=mission_id, id__in=image_ids)
     count = images.count()
     images.delete()
+    log_audit_event(
+        user=user,
+        action_category="missions",
+        action_type=ActionType.DELETION,
+        action_description=f"{user.email} deleted {count} gallery images from mission ID {mission_id}",
+        is_successful=True
+    )
     return count

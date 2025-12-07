@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Optional
 
 from audit_logs.filters import AuditLogFilter
@@ -31,5 +32,12 @@ def audit_logs_list(filters: Optional[dict] = None):
     Returns:
         List of AuditLog instances.
     """
-    qs = AuditLog.objects.all().order_by('-timestamp')
+    qs = AuditLog.objects.all()
+    if filters:
+        action_type = filters.get("action_type")
+        if action_type and isinstance(action_type, Enum):
+            filters["action_type"] = action_type.value
+        action_category = filters.get("action_category")
+        if action_category and isinstance(action_category, Enum):
+            filters["action_category"] = action_category.value
     return AuditLogFilter(filters, qs).qs if filters else qs
