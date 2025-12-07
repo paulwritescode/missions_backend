@@ -174,7 +174,8 @@ def create_mission_api(request, mission_in: schemas.MissionCreateSchema = Form(.
     mission_in_dict = mission_in.dict()
     if banner_file:
         mission_in_dict["banner_image"] = banner_file
-    mission = services.create_mission(**mission_in_dict)
+    user = request.user
+    mission = services.create_mission(**mission_in_dict, user=user)
     return 201, schemas.MissionOutSchema(**mission.to_dict(request))
 
 

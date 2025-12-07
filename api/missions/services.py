@@ -138,6 +138,7 @@ def create_mission(
     location_id: int,
     start_date: datetime.date,
     end_date: datetime.date,
+    user,
     partnering_organization: Optional[list[Dict]] = None,
     registration_close_date: Optional[datetime.date] = None,
     registration_fee_required: Optional[bool] = True,
@@ -186,7 +187,8 @@ def create_mission(
         registration_fee_required=registration_fee_required,
         registration_fee=registration_fee,
         couple_registration_fee=couple_registration_fee,
-        banner_image=banner_image
+        banner_image=banner_image,
+        created_by=user
     )
     return mission
 

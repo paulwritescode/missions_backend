@@ -154,6 +154,10 @@ ADMIN_PERMISSIONS = STAFF_PERMISSIONS | {
     "view_auditlog",
     "list_permissions"
     "delete_jia_participant",
+    "view_auditlog",
+    "list_auditlogs",
+    "flag_log_suspicious",
+    "unflag_log_suspicious",
 }
 
 EXEC_PERMISSIONS = {

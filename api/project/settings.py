@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "missions",
     "souls",
     "testimonies",
+    "audit_logs",
 ]
 
 MIDDLEWARE = [
