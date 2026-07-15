@@ -75,6 +75,10 @@ services:
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # React (Vite) build. Populate via deploy/FRONTEND_DEPLOY_VITE.md — this
+      # dir is untracked by git so `git reset --hard` in the deploy workflow
+      # never touches it.
+      - ./frontend/dist:/app/frontend/dist:ro
       - media_volume:/app/media
       - static_volume:/app/static
     depends_on:
@@ -86,7 +90,9 @@ services:
   # pulls it and recreates the backend container automatically (no SSH deploy
   # needed for code changes). --label-enable limits it to the backend only.
   watchtower:
-    image: containrrr/watchtower:latest
+    # containrrr/watchtower is unmaintained; its bundled Docker client is too
+    # old for modern Docker Engine API versions. Use the maintained fork.
+    image: nickfedor/watchtower:latest
     container_name: missions_watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

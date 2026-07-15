@@ -2,6 +2,8 @@
 
 Deploy your **Vite + React + TypeScript** frontend on the same e2-micro VM as the backend. nginx serves the Vite build (`dist/`) + proxies API calls. No extra cost, no domain needed.
 
+**Live now at:** `http://34.74.106.149/`
+
 ---
 
 ## Architecture
@@ -10,294 +12,113 @@ Deploy your **Vite + React + TypeScript** frontend on the same e2-micro VM as th
 User Browser (http://34.74.106.149)
     ↓
 nginx
-    ├─ / → serves Vite build (dist/ folder)
-    ├─ /api/* → proxies to Django backend
-    └─ /admin/* → proxies to Django admin
+    ├─ /            → serves Vite build (frontend/dist/, SPA fallback to index.html)
+    ├─ /assets/*     → Vite build assets (long-cached, content-hashed filenames)
+    ├─ /api/*        → proxies to Django backend
+    ├─ /admin/*      → proxies to Django admin
+    ├─ /static/*     → Django collectstatic output (served directly by nginx)
+    └─ /media/*      → Django uploads (served directly by nginx)
 ```
 
-Both frontend and backend run in the same docker-compose stack on the VM.
-
----
-
-## Prerequisites (from backend setup)
-
-You already have:
-- ✅ VM IP: `34.74.106.149`
-- ✅ SSH access: `ssh -i ~/.ssh/missions_deploy deployer@34.74.106.149`
-- ✅ Project path: `/opt/missions/app`
-- ✅ Docker & docker-compose running
-- ✅ Backend (Django) healthy on `missions_backend:8000`
+`nginx.conf` and the `frontend/dist` volume mount are **already committed** in this backend repo's `docker-compose.yaml` and `nginx.conf`, and are kept in sync by the GitOps deploy workflow (`.github/workflows/deploy.yaml`, which runs `git reset --hard origin/main` on every merge). You do **not** need to touch either file on the VM — only the contents of `frontend/dist/`, which is untracked by git and safe from `git reset --hard`.
 
 ---
 
 ## Critical: Vite Build Environment
 
-Your `src/config/env.ts` reads `VITE_API_BASE_URL` at **build time**. You must set this to `/api` for production:
+Your `src/config/env.ts` reads `VITE_API_BASE_URL` at **build time** (Vite inlines env vars into the bundle). It must be `/api` for production, or the built app will fall back to `http://127.0.0.1:9050/api` and every API call will fail.
 
-```bash
-# In your React frontend project root
-VITE_API_BASE_URL=/api npm run build
-# NOT: npm run build (which falls back to http://127.0.0.1:9050/api)
-```
-
-This ensures your axios client hits nginx's `/api/` proxy, not a hardcoded localhost IP.
-
----
-
-## Step-by-step Implementation
-
-### **STEP 1: Update your React project**
-
-Create `.env.production` in your React project root:
+This repo's frontend has `.env.production` committed with `VITE_API_BASE_URL=/api`, so a plain `npm run build` picks it up automatically — no need to pass the env var inline. If your frontend project doesn't have that file yet, create it:
 
 ```env
 VITE_API_BASE_URL=/api
 ```
 
-This ensures production builds use relative `/api` paths.
-
 ---
 
-### **STEP 2: Build locally with production env**
+## Deploying a frontend change (every time)
 
-In your React project:
-
-```bash
-npm install  # if needed
-VITE_API_BASE_URL=/api npm run build
-# Creates dist/ folder with optimized static files
-```
-
-Verify the build completed:
-```bash
-ls -la dist/
-# Should see index.html, assets/, etc.
-```
-
----
-
-### **STEP 3: Prepare deployment files**
-
-In your React project root, you should have:
-- ✅ `dist/` (build output)
-- ✅ `.env.production` (created above)
-
-Compress everything:
+### 1. Build locally
 
 ```bash
-tar -czf frontend-build.tar.gz dist/
-```
-
----
-
-### **STEP 4: Copy to the VM**
-
-From your React project directory:
-
-```bash
-scp -i ~/.ssh/missions_deploy frontend-build.tar.gz deployer@34.74.106.149:/tmp/
-rm frontend-build.tar.gz
-```
-
-Also copy the backend repo's nginx config:
-
-```bash
-# From the BACKEND repo (missions_backend)
-scp -i ~/.ssh/missions_deploy deploy/nginx-frontend-vite.conf deployer@34.74.106.149:/tmp/nginx.conf
-```
-
-Or if you're doing this from the frontend project, you can manually create the nginx config on the VM (see **Appendix: Manual nginx config**).
-
----
-
-### **STEP 5: On the VM: Extract and update docker-compose**
-
-SSH into the VM and prepare the stack:
-
-```bash
-ssh -i ~/.ssh/missions_deploy deployer@34.74.106.149 << 'EOF'
-cd /opt/missions/app
-
-# Extract React build
-mkdir -p frontend
-tar -xzf /tmp/frontend-build.tar.gz -C frontend/
-# Now you have: /opt/missions/app/frontend/dist/
-
-# Backup original nginx config
-cp nginx.conf nginx.conf.backend-only
-
-# Use the new nginx config for frontend + API
-cp /tmp/nginx.conf nginx.conf
-
-# Verify nginx config syntax
-docker run --rm -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro nginx nginx -t
-EOF
-```
-
----
-
-### **STEP 6: Update docker-compose.yaml with volume mount**
-
-The nginx service needs to mount the frontend build folder. SSH in and update `docker-compose.yaml`:
-
-```bash
-ssh -i ~/.ssh/missions_deploy deployer@34.74.106.149 << 'EOF'
-cd /opt/missions/app
-
-# Edit docker-compose.yaml
-# Find the nginx service volumes section and add the frontend mount
-# Current:
-#   volumes:
-#     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-#     - media_volume:/app/media
-#     - static_volume:/app/static
-#
-# Change to:
-#   volumes:
-#     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-#     - ./frontend/dist:/app/frontend/dist:ro
-#     - media_volume:/app/media
-#     - static_volume:/app/static
-
-# Quick way: use sed to add the volume
-sed -i '/- \.\/nginx.conf/a\      - .\/frontend\/dist:\/app\/frontend\/dist:ro' docker-compose.yaml
-
-# Verify the change:
-grep -A 5 "nginx:" docker-compose.yaml
-EOF
-```
-
-Or manually edit it. The key addition is:
-```yaml
-nginx:
-  image: nginx:latest
-  container_name: missions_nginx
-  ports:
-    - "80:80"
-    - "443:443"
-  volumes:
-    - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    - ./frontend/dist:/app/frontend/dist:ro    # ← ADD THIS LINE
-    - media_volume:/app/media
-    - static_volume:/app/static
-  depends_on:
-    backend:
-      condition: service_healthy
-  restart: unless-stopped
-```
-
----
-
-### **STEP 7: Restart the stack**
-
-```bash
-ssh -i ~/.ssh/missions_deploy deployer@34.74.106.149 << 'EOF'
-cd /opt/missions/app
-docker compose restart nginx
-sleep 10
-docker compose ps
-EOF
-```
-
-Verify nginx is up:
-```bash
-ssh -i ~/.ssh/missions_deploy deployer@34.74.106.149 "cd /opt/missions/app && docker logs missions_nginx | tail -15"
-```
-
----
-
-### **STEP 8: Test the frontend in browser**
-
-Open: **http://34.74.106.149/**
-
-You should see:
-- ✅ React app loads (Vite build)
-- ✅ No console errors
-- ✅ Network tab shows `/api/...` requests (not to hardcoded IP)
-
-Test an API call in browser console:
-```javascript
-fetch('/api/missions/')
-  .then(r => r.json())
-  .then(data => console.log(data))
-```
-
----
-
-## Continuous Updates (Every time you change the frontend)
-
-Whenever you update your React app:
-
-```bash
-# Step 1: Build locally with production env
 cd /path/to/your/react/project
-VITE_API_BASE_URL=/api npm run build
+npm run build
+# Creates dist/ folder (verify: ls dist/index.html dist/assets/)
+```
 
-# Step 2: Compress
+### 2. Compress and copy to the VM
+
+```bash
 tar -czf frontend-build.tar.gz dist/
-
-# Step 3: Copy to VM
 scp -i ~/.ssh/missions_deploy frontend-build.tar.gz deployer@34.74.106.149:/tmp/
 rm frontend-build.tar.gz
+```
 
-# Step 4: Deploy on VM
+### 3. Extract on the VM and restart nginx
+
+```bash
 ssh -i ~/.ssh/missions_deploy deployer@34.74.106.149 << 'EOF'
 cd /opt/missions/app
 rm -rf frontend/dist
 mkdir -p frontend
 tar -xzf /tmp/frontend-build.tar.gz -C frontend/
-docker compose restart nginx
+docker compose up -d nginx   # `up -d`, not `restart` — needed the first time a
+                              # volume-mounted path changes; restart is enough
+                              # for later updates since the mount already exists
 sleep 5
-docker logs missions_nginx | tail -5
+docker compose ps
 EOF
 ```
+
+### 4. Verify
+
+```bash
+curl -I http://34.74.106.149/          # 200, Content-Type: text/html
+curl -s http://34.74.106.149/api/missions/   # reaches Django (401/200, not 404)
+```
+
+Then load `http://34.74.106.149/` in a browser and confirm the app renders and API calls succeed (check Network tab — requests should go to `/api/...`, not an absolute URL).
 
 ---
 
 ## Automation: GitHub Actions (Optional)
 
-If you want auto-deploy when you merge to `main` on your **frontend** repo:
-
-Create `.github/workflows/deploy-frontend-vite.yaml` in your frontend repo:
+Auto-deploy the frontend on every merge to `main` in your **frontend** repo. Create `.github/workflows/deploy-frontend.yaml` there:
 
 ```yaml
-name: Deploy Frontend (Vite)
+name: Deploy Frontend
 
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install Node
-        uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: "18"
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Build (production env)
-        run: VITE_API_BASE_URL=/api npm run build
-      
-      - name: Compress dist
-        run: tar -czf frontend-build.tar.gz dist/
-      
+          node-version: "20"
+
+      - run: npm ci
+      - run: npm run build   # VITE_API_BASE_URL=/api comes from committed .env.production
+
+      - run: tar -czf frontend-build.tar.gz dist/
+
       - name: Copy to VM
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "frontend-build.tar.gz"
           target: "/tmp/"
-      
+
       - name: Deploy on VM
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
@@ -309,10 +130,10 @@ jobs:
             tar -xzf /tmp/frontend-build.tar.gz -C frontend/
             docker compose restart nginx
             sleep 5
-            docker logs missions_nginx | tail -5
+            docker compose ps
 ```
 
-Then add these secrets to your **frontend** repo (GitHub → Settings → Secrets):
+Add these secrets in the **frontend** repo (Settings → Secrets and variables → Actions) — same values as the backend repo's secrets:
 - `HOST`: `34.74.106.149`
 - `USERNAME`: `deployer`
 - `SSH_PRIVATE_KEY`: contents of `~/.ssh/missions_deploy`
@@ -321,116 +142,34 @@ Then add these secrets to your **frontend** repo (GitHub → Settings → Secret
 
 ## Troubleshooting
 
-**Q: React app loads but shows 404 or blank page**
-- Check browser console for errors
-- Verify nginx is serving from the right path: `ssh deployer@34.74.106.149 "ls -la /opt/missions/app/frontend/dist/"`
-- Ensure volume mount is in docker-compose: `docker inspect missions_nginx | grep frontend`
+**React app loads but shows 404 or blank page**
+- Verify the build actually landed: `ssh deployer@34.74.106.149 "ls -la /opt/missions/app/frontend/dist/index.html"`
+- Confirm the volume mount is active: `ssh deployer@34.74.106.149 "docker exec missions_nginx ls /app/frontend/dist/"`
+- If the mount is missing after a fresh VM/deploy, run `docker compose up -d nginx` (not `restart`) — Compose only re-applies volume changes on recreate.
 
-**Q: API calls fail (404 or network error)**
-- Check that `.env.production` has `VITE_API_BASE_URL=/api`
-- Verify you built with `VITE_API_BASE_URL=/api npm run build`
-- Check nginx config: `docker logs missions_nginx`
-- Test backend directly: `curl http://34.74.106.149:9050/api/missions/` (should work)
+**API calls fail (404 or CORS/network error)**
+- Confirm the frontend built with `VITE_API_BASE_URL=/api` — check the built JS bundle: `grep -o 'baseURL:"[^"]*"' dist/assets/*.js` should show `/api`, not `127.0.0.1` or `9050`.
+- Check nginx routing: `docker logs missions_nginx`
+- Test the backend directly, bypassing nginx: `curl http://34.74.106.149:9050/api/missions/`
 
-**Q: nginx won't start after volume mount change**
-- Check syntax: `docker run --rm -v /opt/missions/app/nginx.conf:/etc/nginx/nginx.conf nginx nginx -t`
-- Check docker-compose syntax: `docker compose config -q`
+**nginx container won't start / crash-loops**
+- Validate config: `ssh deployer@34.74.106.149 "cd /opt/missions/app && docker compose config -q"`
 - Check logs: `docker logs missions_nginx`
 
-**Q: "dist folder not found" or 404 on every page**
-- Verify extraction: `ssh deployer@34.74.106.149 "ls -la /opt/missions/app/frontend/dist/index.html"`
-- Verify volume mount is active: `docker inspect missions_nginx | grep -A 5 Mounts`
-- Restart nginx: `docker compose restart nginx`
+**Page refresh on a client-side route (e.g. `/missions`) returns 404**
+- `nginx.conf`'s `location /` already has `try_files $uri $uri/ /index.html;` for this — if it's missing, the deployed `nginx.conf` is stale. Pull the latest backend repo state onto the VM (the GitOps deploy workflow does this automatically on merge).
 
-**Q: Page refresh returns 404 (but / works)**
-- This means React Router routing is broken
-- Verify nginx config has `try_files $uri $uri/ /index.html;`
-- Restart nginx after config change: `docker compose restart nginx`
+**Watchtower container stuck `Restarting`**
+- Known issue: the `containrrr/watchtower` image is unmaintained and its bundled Docker client is too old for modern Docker Engine (`client version 1.25 is too old`). Fixed in this repo by switching to `nickfedor/watchtower` (the maintained fork) — already reflected in `docker-compose.yaml`.
 
 ---
 
 ## Summary
 
-1. **Build locally** with `VITE_API_BASE_URL=/api npm run build` (production env)
-2. **Compress dist/** and copy to VM
-3. **Extract to /opt/missions/app/frontend/dist/**
-4. **Update docker-compose.yaml** with volume mount (critical!)
-5. **Update nginx.conf** to use `nginx-frontend-vite.conf`
-6. **Restart nginx**
-7. **Test at http://34.74.106.149/**
+1. `npm run build` (production env baked in via committed `.env.production`)
+2. `tar` + `scp` the `dist/` folder to `/tmp/` on the VM
+3. Extract into `/opt/missions/app/frontend/dist/` (untracked, survives GitOps deploys)
+4. `docker compose up -d nginx` (first time) or `restart nginx` (subsequent updates)
+5. Verify with `curl` and a browser check
 
-Every update: build → tar → scp → extract → restart nginx
-
----
-
-## Appendix: Manual nginx config (if you don't have backend repo access)
-
-If you're deploying from just the frontend repo, manually create the nginx config on the VM:
-
-```bash
-ssh -i ~/.ssh/missions_deploy deployer@34.74.106.149 << 'EOF'
-cat > /opt/missions/app/nginx.conf << 'CONFEOF'
-user  nginx;
-worker_processes  auto;
-
-events {
-    worker_connections 1024;
-}
-
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-    sendfile on;
-    keepalive_timeout  65;
-
-    gzip on;
-    gzip_types text/plain application/xml application/javascript application/json;
-    gzip_min_length 256;
-
-    upstream django_backend {
-        server missions_backend:8000;
-    }
-
-    server {
-        listen 80;
-        server_name _;
-
-        root /app/frontend/dist;
-
-        location / {
-            try_files $uri $uri/ /index.html;
-        }
-
-        location /api/ {
-            proxy_pass http://django_backend;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /admin/ {
-            proxy_pass http://django_backend;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /static/ {
-            proxy_pass http://django_backend;
-        }
-
-        location /media/ {
-            proxy_pass http://django_backend;
-        }
-    }
-}
-CONFEOF
-
-# Verify
-docker run --rm -v /opt/missions/app/nginx.conf:/etc/nginx/nginx.conf:ro nginx nginx -t
-EOF
-```
-
-Then proceed from **STEP 6** onward.
+`nginx.conf` and the volume mount live in this backend repo and are deployed automatically — no manual nginx editing needed going forward.
